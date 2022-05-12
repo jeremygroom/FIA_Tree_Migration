@@ -21,7 +21,7 @@
 library(tidyverse)
 library(readxl)
 
-loc <- "Data/"
+
 ############## 
 # -- some constants
 
@@ -29,16 +29,24 @@ loc <- "Data/"
 SELECT.VAR <- "TEMP" # Variables = "TEMP", "annpre"
 #   For         Mean Temperature, Annual Precipitation
 
+RESP.TIMING <- 2 # 1 #2  # For which visit (1st or 2nd) do we want the predicted temperature or precipitation values?
+
+RES <- "Results/Occ_Results/"   # This will become the results folder for this run. Initially just the root occupancy results folder
+RES <- paste0(RES, SELECT.VAR, RESP.TIMING, "/") # Finalizing the results folder location for this run.
+
+LOC <- "Data/"  # Where the data are stored.
+
 #############
 
 resp.vars <- c("TEMP", "annpre")
-resp.timing <- 2 # 1 #2  # For which visit (1st or 2nd) do we want the predicted temperature or precipitation values?
 resp.names <- c("Degrees C", "Precipitation MM")
     
+
+
     # Obtaining the response value, whether it be temperature or precipitation values from the first or second visit,
    #     as determined by the regression on the previous 10 years.
 resp.values <- read_csv(paste0(loc, switch(SELECT.VAR, "TEMP" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>%
-  select(c(1:3, resp.timing + 3)) 
+  select(c(1:3, RESP.TIMING + 3)) 
 colnames(resp.values)[4] <- "response"
 v1 <- resp.values[, 4]
 v1$response <- ifelse(v1$response == 9999, NA, v1$response)
@@ -228,9 +236,8 @@ sumtaylor<-tibble(sppname = ordered.spp$Common_Name, spp.codes = ordered.spp$spp
          UCI = temactmean + 1.96 * temSE)
 
 
-results.loc <- c("Results/Occ_Results/")
 
-write_csv(sumtaylor,paste0(results.loc, 'sumtaylor_occ_rangeshift_', SELECT.VAR, '_visit_', resp.timing, '.csv'))
+write_csv(sumtaylor,paste0(RES, 'sumtaylor_occ_rangeshift_', SELECT.VAR, '_visit_', RESP.TIMING, '.csv'))
 
 
 #################################################################################
@@ -273,7 +280,7 @@ actmean2 <- function(datorig,datrevis,resp.orig,resp.revis) {     #resp.orig, re
   Rf <- Yf / Zf
   Rs <- Ys / Zs
   diff <- Rs - Rf
-  means <- diff*0.01
+#  means <- diff*0.01
   means
 }
 
@@ -307,8 +314,8 @@ for(i in 1:n.iter) {bs.means[, i] <- boot.out[[i]]$boot.means}
 
 stopCluster(cl)
 
-write_csv(data.frame(bs.means), paste0(results.loc, "BSmeans_", SELECT.VAR, ".csv"))
-bs.means <- read_csv(paste0(results.loc, "BSmeans_", SELECT.VAR, ".csv"))
+write_csv(data.frame(bs.means), paste0(RES, "BSmeans_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
+bs.means <- read_csv(paste0(RES, "BSmeans_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
 
 
 
@@ -319,8 +326,8 @@ bs.results2 <- tibble(sppname = ordered.spp$Common_Name, spp.codes = ordered.spp
                       SciName = ordered.spp$SciName, n.orig = ordered.spp$n.orig, n.revis = ordered.spp$n.revis, LCI = bs.results$p2.5, mean = bs.results$mean, UCI = bs.results$p97.5)
 
 
-write_csv(bs.results2,paste0(results.loc, "bs.results2_", SELECT.VAR, ".csv"))
-bs.results2 <- read_csv(paste0(results.loc, "bs.results2_", SELECT.VAR, ".csv"))
+write_csv(bs.results2,paste0(RES, "bs.results2_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
+bs.results2 <- read_csv(paste0(RES, "bs.results2_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
 
 library(expm)
 
@@ -348,8 +355,8 @@ bs.means.gls <- gls.fcn(bs.means[-42,], bs.results2$mean[-42])  # Removing Black
 ## GLS output for mean, 95, 05
 gls.out <- data.frame(means = unlist(bs.means.gls)) 
 row.names(gls.out) <- c("UCI", "mean", "LCI")
-write_csv(gls.out, paste0(results.loc, "gls_out_", SELECT.VAR, "_", resp.timing, ".csv"))
-gls.out <- read_csv(paste0(results.loc, "gls_out_", SELECT.VAR, "_", resp.timing, ".csv"))
+write_csv(gls.out, paste0(RES, "gls_out_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
+gls.out <- read_csv(paste0(RES, "gls_out_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
 
 
 
@@ -357,8 +364,6 @@ gls.out <- read_csv(paste0(results.loc, "gls_out_", SELECT.VAR, "_", resp.timing
 #########################################################################
 ##          (5)    Figures and tables for presence/absence range shift
 ##########################################################################
-
-res <- "Results/Occ_Results/"
 
 library(ggtext)
 library(tidyverse)
@@ -377,11 +382,11 @@ fia.dataprep.fcn <- function(results.file) {
   rX
 }
 
-r1 <- fia.dataprep.fcn(paste0(res, "sumtaylor_occ_rangeshift_", SELECT.VAR, "_visit_", resp.timing, ".csv")) %>% filter(spp.codes != 768) %>%
+r1 <- fia.dataprep.fcn(paste0(RES, "sumtaylor_occ_rangeshift_", SELECT.VAR, "_visit_", RESP.TIMING, ".csv")) %>% filter(spp.codes != 768) %>%
   arrange(desc(temactmean))
 r1.order <- r1 %>% select(Spp.symbol) %>%
   mutate(order = seq(1:n()))
-r2 <- fia.dataprep.fcn(paste0(res, "bs.results2_", SELECT.VAR, ".csv"))  %>% filter(spp.codes != 768) %>%
+r2 <- fia.dataprep.fcn(paste0(RES, "bs.results2_", SELECT.VAR, ".csv"))  %>% filter(spp.codes != 768) %>%
   left_join(r1.order, by = "Spp.symbol") %>%
   arrange(order)
 #r3 <- fia.dataprep.fcn("bs.95.results2.csv")  %>% filter(spp.codes != 768)  %>%    # REMOVED CI PLOT CODE
@@ -390,7 +395,7 @@ r2 <- fia.dataprep.fcn(paste0(res, "bs.results2_", SELECT.VAR, ".csv"))  %>% fil
 #r4 <- fia.dataprep.fcn("bs.05.results2.csv")  %>% filter(spp.codes != 768) %>%
 #  left_join(r1.order, by = "Spp.symbol") %>%
 #  arrange(order)
-gls.vals <- read.csv(paste0(res, "gls_out_", SELECT.VAR, "_", resp.timing, ".csv"))
+gls.vals <- read.csv(paste0(RES, "gls_out_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
 
 
 
@@ -427,18 +432,6 @@ p1 <- bs.plot.fcn(r2, r2$mean, "MeansPlot_BS1.png", 1, "Bootstrap Mean", r2$Spp.
 #p3 <- bs.plot.fcn(r4, r4$mean, "MeansPlot_BS05.png", 3, "5th Percentile", r4$Spp.symbol, NULL, 0)   # Removed from analysis
 
 
-# Plotting p1 through p3 on a single plot.  Estimated mean, BS 05 & 95% CI
-q1 <- as.grob(q1)
-p1 <- as.grob(p1)
-
-p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.5))
-group.x.lab <- "Mean Temperature Difference (revisit minus original visit \u00B0C)"
-x.grob <- textGrob(group.x.lab, gp = gpar(fontfamily = "serif"))
-# here is the plot, saved to file: 
-png(paste0(res, "Mean_results_2.png"), width = 7, height = 6, units = "in", res = 300)
-grid.arrange(arrangeGrob(p_all, bottom = x.grob))
-dev.off()
-
 
 # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
 ## Remove "ggsave" call from function (hashmark)
@@ -448,9 +441,9 @@ p1 <- as.grob(p1)
 
 p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.65))
 group.x.lab <- "Mean Temperature Difference (revisit minus original visit \u00B0C)"
-x.grob <- textGrob(group.x.lab, gp = gpar(fontfamily = "Times New Roman"))
+x.grob <- textGrob(group.x.lab, gp = gpar(fontfamily = "serif"))
 # here is the plot, saved to file: 
-png("Mean_Comparison.png", width = 7, height = 6, units = "in", res = 300)
+png(paste0(RES, "Mean_Comparison_", SELECT.VAR, "_", RESP.TIMING, ".png"), width = 7, height = 6, units = "in", res = 300)
 grid.arrange(arrangeGrob(p_all, bottom = x.grob))
 dev.off()
 
@@ -458,11 +451,10 @@ resp.names[which(resp.vars == SELECT.VAR)]
 ### Table of species, "symbol", plots inhabited pre-no-post, post-not-pre, both, maybe percentages
 
 ## First, housekeeping in loading and preparing the files
-setwd("C:/Users/jeremygroom/Google Drive/Consulting Practice/Contracts/ODF_PP_FIA2020/Reporting/DataFiles_Code/")
 
-orig <- read_csv("OriginalVisit.csv") %>%
+orig <- read_csv(paste0(loc, "Occ_OriginalVisit.csv")) %>%
   select(-c(2, 4:13, 64:66)) %>% pivot_longer(cols = -c(1, 2), names_to = "spp", values_to = "presence" )
-revis <- read_csv("Revisit.csv")  %>%
+revis <- read_csv(paste0(loc, "Occ_Revisit.csv"))  %>%
   select(-c(2, 4:13, 64:66)) %>% pivot_longer(cols = -c(1, 2), names_to = "spp", values_to = "presence" )
 
 data.comb <- left_join(orig, revis, by = c("STATECD", "PLOT_FIADB", "spp")) %>% 
@@ -480,7 +472,7 @@ n.plots <- nrow(orig)/50
 
 
 # the below file contains information on subgroup codes, softwood/hardwood, etc.
-full.spp.codes <- read_xlsx("FullSppNames.xlsx") %>%
+full.spp.codes <- read_xlsx(paste0(loc, "FullSppNames.xlsx")) %>%
   select(SPCD, COMMON_NAME, SPECIES_SYMBOL, GENUS, SPECIES) %>%
   mutate(SciName = paste(GENUS, SPECIES),
          spcd  = paste0("X", SPCD)) %>%
@@ -493,16 +485,16 @@ full.spp.codes <- full.spp.codes[is.na(full.spp.codes$n3) == F,]
 
 table1 <- full.spp.codes[, c(3, 2, 9, 10, 5, 7)]
 names(table1) <- c("Species", "Symbol", "First Visit", "Second Visit", "Lost", "Gained")
-write_csv(table1, "Occ_Results/Table 1.csv")
+write_csv(table1, paste0(RES, "Table_OccCount_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
 
 ## WHich species not used but detected?
 
 
-Analysis1 <- read_csv("C:/Users/jeremygroom/Google Drive/Consulting Practice/Contracts/ODF_PP_FIA2020/Reporting/DataFiles_Code/AnalysisData1_noMicro_2019.csv") %>% 
+Analysis1 <- read_csv(paste0(loc, "AnalysisData1_noMicro_2019.csv")) %>% 
   group_by(SPCD) %>%
   summarize(n = n())
 
-all.spp <- read_xlsx("C:/Users/jeremygroom/Google Drive/Consulting Practice/Contracts/ODF_PP_FIA2020/Reporting/DataFiles_Code/FullSppNames.xlsx") %>%
+all.spp <- read_xlsx(paste0(loc, "FullSppNames.xlsx")) %>%
   select(SPCD, COMMON_NAME, SPECIES_SYMBOL, GENUS, SPECIES) %>%
   mutate(SciName = paste(GENUS, SPECIES)) %>%
   select(-GENUS, -SPECIES, -COMMON_NAME) %>% 
@@ -511,17 +503,17 @@ all.spp <- read_xlsx("C:/Users/jeremygroom/Google Drive/Consulting Practice/Cont
 
 not.used.spp <- all.spp[is.na(all.spp$n1) == T,]
 
-write_csv(not.used.spp, "Occ_Results/NotUsedSpp.csv")
+write_csv(not.used.spp, paste0(RES, "NotUsedSpp_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))  # The column n1 is fairly arbitrary - the point is that there were no data, so it receives an NA
 
 
 ### Probability of obtaining 5 (or 8) significant species given 49 spp
 p <- 0.5
-n <- 50
+n <- 49
 
 
 # Same result
-1 - pbinom(5, 49, 0.05)
-1 - pbinom(8, 49, 0.05)
+1 - pbinom(2, n, 0.05)
+1 - pbinom(7, n, 0.05)
 
 ### Confidence interval comparison between bootstrap & estimated mean (already has bitter cherry, 768, removed)
 comp.b.e <- tibble(spp.codes = r1$spp.codes, estCIdiff = r1$UCI-r1$LCI, bsCIdiff = r2$UCI - r2$LCI, n_sp = r2$n.revis) %>% 
@@ -543,85 +535,7 @@ mean_bs; lci_n.bs; uci_n.bs
 n.plotBS.vs.Est <- tibble(Vals = c("n", "Mean", "LCI", "UCI"), Ests = c(n.est, mean_est, lci_n.est, uci_n.est), BS = c(n.bs, mean_bs, lci_n.bs, uci_n.bs))
 
 
-write_csv(n.plotBS.vs.Est, "Occ_Results/nPlotBSvsEst.csv")
-
-
-#######################################
-## Histogram Plot (7)
-#############################################
-
-orig <- read.csv("OriginalVisit.csv") 
-revis <- read.csv("Revisit.csv") 
-
-
-bs.results2 <- read_csv('Occ_Results/bs.results2.csv') %>%
-  mutate(sig = ifelse(UCI < 0 | LCI > 0, 1, 0))
-
-sumtaylor <- read_csv('Occ_Results/sumtaylor_occ_rangeshift.csv') %>%
-  mutate(sig = ifelse(UCI < 0 | LCI > 0, 1, 0))
-
-   # Altering this code to only use the non-bootstrap significant spp
-spp.include <- sumtaylor$Spp.symbol[sumtaylor$sig == 1]
-#spp.include <- unique(c(bs.results2$Spp.symbol[bs.results2$sig == 1], sumtaylor$Spp.symbol[sumtaylor$sig == 1]))  # This one will include bootstrap + est spp
-
-orig.h <- orig[,13:max(grep("X", names(orig)))]
-orig.h[,2:ncol(orig.h)] <- orig.h[,1] * orig.h[,2:ncol(orig.h)]
-
-revis.h <- revis[,13:max(grep("X", names(revis)))]
-revis.h[,2:ncol(revis.h)] <- revis.h[,1] * revis.h[,2:ncol(revis.h)]
-
-ordered.spp2 <- ordered.spp %>% select(c(1, 4, 5, 6, 7))
-
-orig.h2 <- orig.h %>% pivot_longer(2:ncol(orig.h), names_to = "spp", values_to = "temps") %>% filter(temps > 0) %>%
-  mutate(temps = temps/100)
-orig.h2$spp <- substr(orig.h2$spp, 2, nchar(orig.h2$spp))
-orig.h2$spp <- as.numeric(orig.h2$spp)
-orig.h3 <- left_join(orig.h2[,2:3], ordered.spp2, by = c("spp" = "spp.codes"))
-
-revis.h2 <- revis.h %>% pivot_longer(2:51, names_to = "spp", values_to = "temps") %>% filter(temps > 0) %>%
-  mutate(temps = temps/100)
-revis.h2$spp <- substr(revis.h2$spp, 2, nchar(revis.h2$spp))
-revis.h2$spp <- as.numeric(revis.h2$spp)
-revis.h3 <- left_join(revis.h2[,2:3], ordered.spp2, by = c("spp" = "spp.codes"))
-
-dat1 <- bind_rows("Orig" = orig.h3, "Revis" = revis.h3, .id = "groups")
-
-
-# mean lines
-
-sp.codes <- colnames(orig.h[, 2:ncol(orig.h)])
-sp.codes <- substr(sp.codes, 2, nchar(sp.codes))
-orig.means <- data.frame(spp = sp.codes, means = temactmean$Rf/100)
-revis.means <- data.frame(spp = sp.codes, means = temactmean$Rs/100)
-dat.means <- bind_rows("orig" = orig.means, "revis" = revis.means, .id = "groups") %>% 
-  mutate(spp = as.numeric(spp)) %>%
-  left_join(ordered.spp2, by = c("spp" = "SppCode"))
-
-
-# plotting
-
-dat.plot <- dat1 %>% filter(SPECIES_SYMBOL %in% spp.include)
-dat.means.plot <- dat.means %>% filter(SPECIES_SYMBOL %in% spp.include)
-
-ggplot(dat.plot, aes(temps, linetype = groups)) +
-  geom_freqpoly() + 
-  geom_vline(data = dat.means.plot, aes(xintercept = means, linetype = groups)) +
-  scale_linetype_manual(values = c(1, 1, 2, 2), guide = F) + 
-  theme_classic() + 
-  geom_hline(aes(yintercept = 0)) + 
-  scale_y_continuous(expand = c(0, 0)) + 
-  scale_x_continuous(n.breaks = 6) + 
-  facet_wrap(~SciName, scales = "free", ncol = 2) + 
-  theme(text=element_text(size=12,  family="Times New Roman"),
-        axis.title.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        axis.line.y=element_blank(),
-        strip.background = element_blank(), 
-        strip.text = element_text(face = "italic")) +
-  labs(x = "Mean Degrees C")
-ggsave(paste0(results.loc, "Occ_histograms.png"), device = "png", width = 10, height = 20, units = "cm", dpi = 240, pointsize = 12)
-
+write_csv(n.plotBS.vs.Est, paste0(RES, "nPlotBSvsEst_", SELECT.VAR, "_", RESP.TIMING,".csv"))
 
 
 
@@ -633,7 +547,7 @@ ggsave(paste0(results.loc, "Occ_histograms.png"), device = "png", width = 10, he
 #############################################
 
 #LatLon <- read_csv("PlotLatLon.csv")
-LL <- read_csv("plot052120.csv") %>% filter(PLOT_STATUS_CD != 3) %>% 
+LL <- read_csv(paste0(LOC, "plot052120.csv")) %>% filter(PLOT_STATUS_CD != 3) %>% 
   group_by(STATECD, PLOT_FIADB) %>% 
   summarize(sum_propfor = sum(propfor),
             n_plots = n()) %>%
@@ -645,17 +559,17 @@ LL <- read_csv("plot052120.csv") %>% filter(PLOT_STATUS_CD != 3) %>%
          sum_propfor > 1)
 
 
-orig <- read_csv("OriginalVisit.csv")
+orig <- read_csv(paste0(LOC, "Occ_OriginalVisit.csv"))
 
-orig_plots <- orig %>% filter(propfor > 0) %>% select(1:3) %>% 
+orig_plots <- orig %>% filter(propfor > 0) %>% dplyr::select(1:3) %>% 
   mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD)))
 #%>% 
-  select(4)
+#  select(4)
 
 ForPlots <- left_join(orig_plots, LL, by = "State_Plot") %>% filter(n_plots > 1)# %>% filter(is.na(LON) == F)
 
 # QGIS can import CSV files as shape files
-write_csv(ForPlots, "Occ_Results/GIS_LatLon.csv")
+write_csv(ForPlots, paste0(RES, "GIS_LatLon_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
 
 
 

@@ -26,7 +26,6 @@
 
 library(tidyverse)
 library(readxl)
-library(data.table)
 library(readr)
 
 ############## 
@@ -35,28 +34,46 @@ library(readr)
 # The SELECT.VAR constant will be used to create data with only the selected variable and save output with that variable name.
 SELECT.VAR <- "annpre" # Variables = "TEMP", "annpre", "decmint", "augmaxt", "smrmnvpd"
                          #   For         Mean Temp, Annual Precip, December Min Temp, August Max Temp, Summer Vapor Pressure Deficit
+RESP.TIMING <- 2 # 1 #2  # For which visit (1st or 2nd) do we want the predicted temperature or precipitation values?
+
+RES <- "Results/TreeNum_Results/"   # This will become the results folder for this run. Initially just the root occupancy results folder
+RES <- paste0(RES, SELECT.VAR, RESP.TIMING, "/") # Finalizing the results folder location for this run.
+
+LOC <- "Data/"  # Where the data are stored.
 
 #############
 
-dat.loc <- "Data/"
+resp.vars <- c("TEMP", "annpre")
+resp.names <- c("Degrees C", "Precipitation MM")
+
+# Obtaining the response value, whether it be temperature or precipitation values from the first or second visit,
+#     as determined by the regression on the previous 10 years.
+resp.values <- read_csv(paste0(loc, switch(SELECT.VAR, "TEMP" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>%
+  select(c(1:3, RESP.TIMING + 3)) 
+colnames(resp.values)[4] <- "response"
+v1 <- resp.values[, 4]
+v1$response <- ifelse(v1$response == 9999, NA, v1$response)
+resp.values[, 4] <- v1$response
 
 
-Tree5.2 <- readr::read_csv(unzip(paste0(dat.loc, "Cleaned_Trees_2019.zip"), "Cleaned_Trees_2019.csv"))
+
+# Loading tree data to obtain numbers of trees
+Tree5.2 <- readr::read_csv(unzip(paste0(LOC, "Cleaned_Trees_2019.zip"), "Cleaned_Trees_2019.csv"))
 
 ## Need to remove trees in the macroplot, otherwise ingrowth of really big trees can occur
 Tree5.2 <- Tree5.2 %>% filter(DIST <= 24)
 
-orig <- read_csv(paste0(dat.loc, "Occ_Input/OriginalVisit.csv"))
-revis <- read_csv(paste0(dat.loc, "Occ_Input/Revisit.csv"))
+orig <- read_csv(paste0(LOC, "Occ_OriginalVisit.csv"))
+revis <- read_csv(paste0(LOC, "Occ_Revisit.csv"))
 n.orig <- apply(orig[,14:63], 2, sum)
 #orig2 <- orig[, c(1:13, which(n.orig >= 1000)  + 13, 64:66)]
 
-full.spp.codes <- read_xlsx(paste0(dat.loc, "FullSppNames.xlsx")) %>%
+full.spp.codes <- read_xlsx(paste0(LOC, "FullSppNames.xlsx")) %>%
   select(SPCD, COMMON_NAME, SPECIES_SYMBOL, GENUS, SPECIES) %>%
   mutate(SciName = paste(GENUS, SPECIES)) %>%
   select(-GENUS, -SPECIES, -COMMON_NAME)
 
-treecodes <- read_csv(paste0(dat.loc, "Spp_Codes.csv"))
+treecodes <- read_csv(paste0(LOC, "Spp_Codes.csv"))
 treecodes[,2] <- apply(treecodes[,2], 1, function(x) gsub("?", " ", x, fixed = T))  # replacing question marks in text with spaces
 treecodes$match <- paste0("X", treecodes$SppCode)
 
@@ -84,39 +101,9 @@ Analysis1 <- Tree5.3 %>%
 
 
 
-####################################
-### DATA INCONSISTENCY CHECK - USED CHECK TO POPULATE AND PRODUCE THE FILES TreeNum_OddDeadTrees.XLSX/csv. 
-## This code checks the numbers against orig and revis
-##  Run the code by find-replace the species code number for the next 25 lines, run to >spp.diff.out, then check with next 2 lines.
 
 
-sp_orig <- orig$State_Plot[orig$X11 > 0]
-sum(orig$X11); sum(revis$X11)  # These numbers check out
-sp_revis <- revis$State_Plot[revis$X11 > 0]
-sp_gt <- Analysis1$State_Plot[Analysis1$num.code == 3 & Analysis1$SPCD == 11]
-sp_et <- Analysis1$State_Plot[Analysis1$num.code == 2 & Analysis1$SPCD == 11]
-sp_lt <- Analysis1$State_Plot[Analysis1$num.code == 1 & Analysis1$SPCD == 11]
-sp_gel <- c(sp_gt, sp_et, sp_lt)
-length(unique(sp_gel)) # checks out
-
-sp_or.re <- unique(c(sp_orig, sp_revis))
-length(sp_or.re)  # 112, so there are 50 plots unaccounted for
-
-sp.df <- tibble(stateplot = unique(c(sp_or.re, sp_gel))) %>%
-  mutate(in.or.re = stateplot %in% sp_or.re,
-         in.gel = stateplot %in% sp_gel)
-
-sp.df$stateplot[sp.df$in.or.re == F]  # all plots are in orig or revis
-sp.diff.out <- sp.df$stateplot[sp.df$in.gel == F]   # the 50 plots missing from TreeNanalysis for this species
-sp.diff.out
-Tree5.2[Tree5.2$SPCD == 17 & Tree5.2$State_Plot == 9421541,]   
-Tree5.2[Tree5.2$SPCD == 17 & Tree5.2$State_Plot == 9421541, 15:31]   
-
-####################################
-############# Back to the main analysis #####################
-
-
-missed.dead.trees <- read_csv(paste0(dat.loc, "TreeNum_OddDeadTrees.csv"))  # The summarized tree list from above data check
+missed.dead.trees <- read_csv(paste0(LOC, "TreeNum_OddDeadTrees.csv"))  # The summarized tree list from data check from earlier version of analysis
 
 Analysis1.2 <- rbind(Analysis1, missed.dead.trees)
 
@@ -143,8 +130,8 @@ Analysis2 <- Analysis1 %>% filter(SPCD %in% spp_A1$SPCD)
 
 ### Next, to conduct the change-in-numbers analysis we need to prepare the analysis files.  What follows is copied from Dataprep_TreeOcc_Rangeshift3.R
 
-plotall <- read_csv(paste0(dat.loc, "plot052120.csv"))  # 42540 unique plots
-strat <- read_csv(paste0(dat.loc, "strat_info052120.csv")) %>%
+plotall <- read_csv(paste0(LOC, "plot052120.csv"))  # 42540 unique plots
+strat <- read_csv(paste0(LOC, "strat_info052120.csv")) %>%
   mutate(W_h = P1POINTCNT/p1pntcnt_eu)             # W_h is the stratum weight
 strat2 <- strat %>% select(STRATUM, P1POINTCNT, W_h)  # Reducing the number of columns to those we need 
 
@@ -177,10 +164,10 @@ plotall2 <- plotall1.5 %>% select(-plt_cn) %>% distinct()
 
 # side exercise to estimate area for each ownership stratum, create table
 
-plottmp <- read_csv(paste0(dat.loc, "anntmp.csv")) %>% mutate(TEMP = TEMP/100)
-plotannpre <- read_csv(paste0(dat.loc, "../DataFiles_Code/New Variables 2021/climate_data110421.csv")) %>% dplyr::select(-PLOT_STATUS_CD, -smrtp) %>%
+plottmp <- read_csv(paste0(LOC, "anntmp.csv")) %>% mutate(TEMP = TEMP/100)
+plotannpre <- read_csv(paste0(LOC, "../DataFiles_Code/New Variables 2021/climate_data110421.csv")) %>% dplyr::select(-PLOT_STATUS_CD, -smrtp) %>%
   mutate(annpre = exp(annpre/100))  # may have already made this transformation??
-plot.min.aug.vp <- read_csv(paste0(dat.loc, "../DataFiles_Code/New Variables 2021/climate_data110421_2.csv")) %>% # December min temp, aug max temp, summer vapor pressure deficit
+plot.min.aug.vp <- read_csv(paste0(LOC, "../DataFiles_Code/New Variables 2021/climate_data110421_2.csv")) %>% # December min temp, aug max temp, summer vapor pressure deficit
   mutate(decmint = decmint/100,
          augmaxt = augmaxt/100,
          smrmnvpd = smrmnvpd/100)
