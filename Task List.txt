@@ -1,0 +1,3 @@
+############ LIST OF ITEMS TO BE COMPLETED FOR ANALYSIS #############
+
+* For Occupancy analysis, be sure to re-run GLS with 20000 iterations instead of 200.  5/11/22
