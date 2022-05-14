@@ -20,6 +20,8 @@
 
 library(tidyverse)
 library(readxl)
+library(doParallel)
+library(foreach)  # Package "foreach" has parallel capabilities when running for-loops
 
 
 ############## 
@@ -45,7 +47,7 @@ resp.names <- c("Degrees C", "Precipitation MM")
 
     # Obtaining the response value, whether it be temperature or precipitation values from the first or second visit,
    #     as determined by the regression on the previous 10 years.
-resp.values <- read_csv(paste0(loc, switch(SELECT.VAR, "TEMP" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>%
+resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "TEMP" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>%
   select(c(1:3, RESP.TIMING + 3)) 
 colnames(resp.values)[4] <- "response"
 v1 <- resp.values[, 4]
@@ -82,8 +84,6 @@ which(apply(x2[, 14:63], 1, sum) > 0) # only 1484, STATECD = 53 PLOT_FIADB = 538
 
 #####--- THESE POINTS MUST HAVE PRISM DATA FOR THEM FOR THE FINAL ANALYSIS --- #######
 orig[orig$STATECD == 53 & orig$PLOT_FIADB == 97917, 14:63] <- 0   # Setting species value to zero because it is non-forested (coastal)
-orig <- orig %>% filter(orig$State_Plot != 5385153)           # Removing this point from orig, revis because it was only surveyed in 2018
-revis <- revis %>% filter(revis$State_Plot != 5385153)
 
 
 # The PRISM data manipulation introduced NAs.  Changing those to zeros.  
@@ -245,8 +245,6 @@ write_csv(sumtaylor,paste0(RES, 'sumtaylor_occ_rangeshift_', SELECT.VAR, '_visit
 # (3) Bootstrap version for comparison plus construction of GLS confidence intervals#
 
 #################################################################################
-library(doParallel)
-library(foreach)  # Package "foreach" has parallel capabilities when running for-loops
 
 no_cores <- detectCores(logical = TRUE)  # returns the number of available hardware threads, and if it is FALSE, returns the number of physical cores
 cl <- makeCluster(no_cores-1)  
@@ -514,6 +512,20 @@ n <- 49
 # Same result
 1 - pbinom(2, n, 0.05)
 1 - pbinom(7, n, 0.05)
+
+
+prob.df <- tibble(type = c("Estimate", "Bootstrap"),
+                  n = c(n.sp, n.sp), 
+                  n.sig = c(sum(r1$sig), sum(r2$sig)),
+                  prob.sig = c(1 - pbinom(sum(r1$sig), n.sp, 0.05),
+                               1 - pbinom(sum(r2$sig), n.sp, 0.05)))
+
+write_csv(prob.df, paste0(RES, "ProbSig_" , SELECT.VAR, "_", RESP.TIMING, ".csv"))
+
+
+
+
+
 
 ### Confidence interval comparison between bootstrap & estimated mean (already has bitter cherry, 768, removed)
 comp.b.e <- tibble(spp.codes = r1$spp.codes, estCIdiff = r1$UCI-r1$LCI, bsCIdiff = r2$UCI - r2$LCI, n_sp = r2$n.revis) %>% 

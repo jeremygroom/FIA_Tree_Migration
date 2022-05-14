@@ -1,3 +1,6 @@
 ############ LIST OF ITEMS TO BE COMPLETED FOR ANALYSIS #############
 
 * For Occupancy analysis, be sure to re-run GLS with 20000 iterations instead of 200.  5/11/22
+* Plot 53851 STATECD 53 only has plot052120.csv values for 2018.  There are target species in the plot during the first (2008) and second visit (albeit they 
+are small, with 3 with DIA < 10, one has DIA = 17). I've added this plot to the tree number analysis.  
+* We are missing temp/precip data for plot 53/97917.  I am currently removing it from the analysis.  
