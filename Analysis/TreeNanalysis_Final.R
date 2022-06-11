@@ -38,8 +38,8 @@ library(grid)
 library(gridExtra)
 library(ggplotify) # enables as.grob() function
 
-for(x in 1:2){
-  for(y in 1:2) {
+for (x in 1:2) {
+  for (y in 1:2) {
 ############## 
 # -- some constants
 
@@ -105,8 +105,8 @@ Analysis1 <- Tree5.3 %>%
   group_by(STATECD, PLOT_FIADB,State_Plot, SPCD) %>%
   summarize(n.fv = length(INVYR[INVYR < 2011]),
             n.sv = length(INVYR[INVYR >= 2011]),
-            num.code = if(n.fv > n.sv) 1 else if(  # 1 = fewer trees second visit
-              n.fv == n.sv) 2 else if(             # 2 = same number of trees both visits
+            num.code = if (n.fv > n.sv) 1 else if (  # 1 = fewer trees second visit
+              n.fv == n.sv) 2 else if (             # 2 = same number of trees both visits
                 n.fv < n.sv) 3 else 4)             # 3 = More trees second visit
 
 
@@ -203,16 +203,16 @@ Analysis3[is.na(Analysis3)] <- 0         # replacing all NA values with 0
 
 # removing columns with fewer than 50 plot associations.  Since this was essentially done above, it removes one column (X0) which did not represent a tree species
 spp.num <- rep(NA, length(14:(ncol(Analysis3))))  # blank vector
-for(i in 14:(ncol(Analysis3) )) {
-  spp.num[i-13] <- length(which(Analysis3[,i] > 0))  # Didn't use an apply(x, 2, sum) function because the values are not all 1 (some 2 and 3s)
+for (i in 14:(ncol(Analysis3) )) {
+  spp.num[i - 13] <- length(which(Analysis3[,i] > 0))  # Didn't use an apply(x, 2, sum) function because the values are not all 1 (some 2 and 3s)
 }
-Analysis3 <- Analysis3[,c(1:13, (which(spp.num > 49)+13))]
+Analysis3 <- Analysis3[ ,c(1:13, (which(spp.num > 49) + 13))]  # This gets rid of column X0, which has no species data.
 n.analysis3 <- ncol(Analysis3)
 
 # Less Than data set
 lt <- Analysis3  # lt = "less than / equal to", so plots that remained the same or lost trees
 
-lt.m <-as.matrix(lt) # changing to matrix so that the replacement goes faster (much faster) than it would for a data frame
+lt.m <- as.matrix(lt) # changing to matrix so that the replacement goes faster (much faster) than it would for a data frame
 lt.m[,14:n.analysis3][lt.m[, 14:n.analysis3] == 3] <- 0  # make all 3's (more 2nd visit) = zero
 lt.m[,14:n.analysis3][lt.m[, 14:n.analysis3] == 2] <- 0  # set all 2's (equal both visits) = 0 (<< equals 1 if really less than/equal to>>)
 lt <- data.frame(lt.m)                 # 1's stay 1s
@@ -221,14 +221,14 @@ lt <- data.frame(lt.m)                 # 1's stay 1s
 # Greater Than data set
 gt <- Analysis3
 
-gt.m <-as.matrix(gt)
+gt.m <- as.matrix(gt)
 gt.m[,14:n.analysis3][gt.m[, 14:n.analysis3] == 2 | gt.m[, 14:n.analysis3] == 1] <- 0
 gt.m[,14:n.analysis3][gt.m[, 14:n.analysis3] == 3] <- 1
 gt <- data.frame(gt.m) 
 
 # here are the files to move forward with
-#write_csv(lt, paste0(dat.loc, "TreeNum_Input/LessThan_", SELECT.VAR, ".csv"))
-#write_csv(gt, paste0(dat.loc, "TreeNum_Input/GrThan_", SELECT.VAR, ".csv"))
+#write_csv(lt, paste0(LOC, "TreeNum_LessThan_", SELECT.VAR, ".csv"))
+#write_csv(gt, paste0(LOC, "TreeNum_GrThan_", SELECT.VAR, ".csv"))
 
 
 
@@ -262,7 +262,7 @@ actmean <- function(datlt,datgt,resp.lt,resp.gt) {     #resp.lt, resp.gt = respo
   diff <- Zf <- Zs <- Yf <- Ys <- Rf <- Rs <- rep(0,length(spp_A1$SPCD))                           # Mean difference in response var for a given species
   for (i in 1:length(spp_A1$SPCD)) {                         # i indexes species
     Zf_i <- Zs_i <- Yf_i <- Ys_i <- rep(0, length(strat2$STRATUM))  # Weighted values for each strata
-    for(h in 1:length(strat2$STRATUM)){                  # h indexes strata
+    for (h in 1:length(strat2$STRATUM)) {                  # h indexes strata
       Zf_i[h] <- strat2$W_h[h] * sum(datlt[datlt$STRATUM == strat2$STRATUM[h],i + 13])
       Zs_i[h] <- strat2$W_h[h] * sum(datgt[datgt$STRATUM == strat2$STRATUM[h],i + 13])
       Yf_i[h] <- strat2$W_h[h] * sum(datlt[datlt$STRATUM == strat2$STRATUM[h],i + 13] * datlt$response[datlt$STRATUM == strat2$STRATUM[h]])
@@ -281,7 +281,7 @@ actmean <- function(datlt,datgt,resp.lt,resp.gt) {     #resp.lt, resp.gt = respo
   means
 }
 
-nn<-length(lt[,1])   # nn = N = total plots including ones not sampled
+nn <- length(lt[,1])   # nn = N = total plots including ones not sampled
 n.sp <- n.analysis3 - 13  # Number of species examined
 
 wt.varcov.fcn <- function(xy.sum, xsum, ysum, nnh) {(1/nn) * sum(strat2$W_h * nnh * (xy.sum - (1/nnh) * xsum * ysum))}
@@ -292,10 +292,10 @@ vardiffsum <- function(ltdat,gtdat,ii, meandat)	{   # ii = column for response v
   gtdat_z <- gtdat_y <- gtdat[, c(9, 14:n.analysis3)]           # subsetting data for Z and Y values
   gtdat_y[, 2:(n.sp + 1)] <- gtdat_y[, 2:(n.sp + 1)] * gtdat$response       # Y values are the indicator * response variable.  
   varDIFF <- rep(0, length(spp_A1$SPCD))
-  for (i in 1:length(spp_A1$SPCD))	{
+  for (i in 1:length(spp_A1$SPCD)) {
     Zfh <- Zsh <- Yfh <- Ysh <- nn_h <- Zu2fh <- Zu2sh <- Yu2fh <- Yu2sh <- 
       ZYffh <- ZYssh <- ZZfsh <- ZYfsh <- YZfsh <- YYfsh <- rep(0, length(strat2$STRATUM))  # Weighted values for each strata
-    for(h in 1:length(strat2$STRATUM)){ 
+    for (h in 1:length(strat2$STRATUM)) { 
       # Pieces for calculating stratum-level variances.
       # For each stratum h for each species, first calculate the Z and Y values.
       Zfh[h] <- sum(ltdat_z[ltdat_z$STRATUM == strat2$STRATUM[h], i + 1])
@@ -320,7 +320,7 @@ vardiffsum <- function(ltdat,gtdat,ii, meandat)	{   # ii = column for response v
     }
     
     
-    nn<-length(ltdat[,1])   # nn = N = total plots including ones not sampled
+    nn <- length(ltdat[ ,1])   # nn = N = total plots including ones not sampled
     
     
     # Weighed variances (Step 8 of algorithm sheet)
@@ -355,14 +355,18 @@ temactmean <- actmean(lt, gt, lt$response, gt$response)
 # Standard errors
 temSE <- sqrt(vardiffsum(lt, gt, which(names(lt) == response), temactmean))
 
-sumtaylor<-tibble(SppNames = ordered.spp$Common_Name, spp.codes = ordered.spp$spp.codes, Spp.symbol = ordered.spp$SPECIES_SYMBOL, 
-                  SciName = ordered.spp$SciName, n.lt = ordered.spp$n.lt, n.gt = ordered.spp$n.gt, temactmean = temactmean$diff, temSE) %>%
+tem_out <- tibble(spp.codes = names(gt)[14:ncol(gt)], temactmean = temactmean$diff, temSE = temSE) %>% 
+  mutate(spp.codes = as.numeric(substr(spp.codes, 2, nchar(spp.codes))))
+
+
+sumtaylor <- tibble(SppNames = ordered.spp$Common_Name, spp.codes = ordered.spp$spp.codes, Spp.symbol = ordered.spp$SPECIES_SYMBOL, 
+                  SciName = ordered.spp$SciName, n.lt = ordered.spp$n.lt, n.gt = ordered.spp$n.gt) %>%
+  left_join(tem_out, by = "spp.codes") %>%
   mutate(LCI = temactmean - 1.96 * temSE,
          UCI = temactmean + 1.96 * temSE)
 
 
-
-write_csv(sumtaylor,paste0(RES, "sumtaylor_num_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
+write_csv(sumtaylor,paste0(RES, "sumtaylor_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
 
 
 
@@ -381,7 +385,7 @@ actmean2 <- function(datlt,datgt,resp.lt,resp.gt) {     #resp.lt, resp.gt = resp
   Zf_i <- Zs_i <- Yf_i <- Ys_i <- matrix(rep(0, length(strat3[, 1]) * n.sp), nrow = length(strat3[, 1]))  # Weighted values for each strata
   datltY <- datlt[, 14:(n.sp + 13)] * datlt[, 13]
   datgtY <- datgt[, 14:(n.sp + 13)] * datgt[, 13]
-  for(h in 1:length(strat3[, 1])){                  # h indexes strata
+  for (h in 1:length(strat3[, 1])) {                  # h indexes strata
     Zf_i[h, ] <- apply(datlt[datlt[, 9] == strat3[h, 1], 14:(n.sp + 13)], 2, sum) 
     Zs_i[h, ] <- apply(datgt[datgt[, 9] == strat3[h, 1], 14:(n.sp + 13)], 2, sum) 
     Yf_i[h, ] <-   apply(datltY[datlt[, 9] == strat3[h, 1], 1:n.sp], 2, sum) 
@@ -419,11 +423,11 @@ gt1 <- data.matrix(gt)
 
   # Preparing some parallel computing to run the bootstrap of the mean.
 no_cores <- detectCores(logical = TRUE)  # returns the number of available hardware threads, and if it is FALSE, returns the number of physical cores
-cl <- makeCluster(no_cores-1)  
+cl <- makeCluster(no_cores - 1)  
 registerDoParallel(cl) 
 
 
-y <- Sys.time()
+y1 <- Sys.time()
   row.id <- 1:nrows
   boot.out <- foreach(j = 1:n.iter) %dopar% {
   bs.id <- sample(row.id, replace = T)  
@@ -434,9 +438,9 @@ y <- Sys.time()
   list(boot.means = mean_results)
   
 }
-Sys.time() - y
+Sys.time() - y1
 
-for(i in 1:n.iter) {bs.means[, i] <- boot.out[[i]]$boot.means} 
+for (i in 1:n.iter) {bs.means[, i] <- boot.out[[i]]$boot.means} 
 
 stopCluster(cl)
 
@@ -445,11 +449,15 @@ stopCluster(cl)
 #write_csv(data.frame(bs.means), paste0(loc, "TreeNum_Results/BSmeans_", SELECT.VAR, ".csv"))
 #bs.means <- read_csv(paste0(loc, "TreeNum_Results/BSmeans_", SELECT.VAR, ".csv"))
 
-bs.results <- data.frame(t(apply(bs.means, 1, quantile, probs = c(0.025, 0.5, 0.975)))) 
-colnames(bs.results) <- c("p2.5", "mean", "p97.5")
+bs.results <- data.frame(spp.codes = names(gt)[14:ncol(gt)], t(apply(bs.means, 1, quantile, probs = c(0.025, 0.5, 0.975)))) %>% 
+  mutate(spp.codes = as.numeric(substr(spp.codes, 2, nchar(spp.codes))))
+colnames(bs.results) <- c("spp.codes", "LCI", "mean", "UCI")
+
 
 bs.results2 <- tibble(sppname = ordered.spp$Common_Name, spp.codes = ordered.spp$spp.codes, Spp.symbol = ordered.spp$SPECIES_SYMBOL, 
-                      SciName = ordered.spp$SciName, n.lt = ordered.spp$n.lt, n.gt = ordered.spp$n.gt, LCI = bs.results$p2.5, mean = bs.results$mean, UCI = bs.results$p97.5)
+                      SciName = ordered.spp$SciName, n.lt = ordered.spp$n.lt, n.gt = ordered.spp$n.gt) %>%
+  left_join(bs.results, by = "spp.codes") 
+
 
 #
 write_csv(bs.results2,paste0(RES, "bs.results2_", SELECT.VAR, "_", RESP.TIMING,  ".csv"))
@@ -481,9 +489,9 @@ gls.fcn <- function(bsresults, deltas){
   list(deltaUCI, DeltaHat, deltaLCI)
 }
 
-rm.cherry <- which(bs.results2$sppname == "bitter cherry")
+rm.cherry <- which(bs.results$spp.codes == 768)  # ID for bitter cherry
 
-bs.means.gls <- gls.fcn(bs.means[-rm.cherry,], bs.results2$mean[-rm.cherry])  
+bs.means.gls <- gls.fcn(bs.means[-rm.cherry,], bs.results$mean[-rm.cherry])  # Not using bs.results2 because that has reordered the species codes.
 
 gls.out <- data.frame(means = unlist(bs.means.gls)) 
 row.names(gls.out) <- c("UCI", "mean", "LCI")
@@ -498,7 +506,7 @@ write_csv(gls.out, paste0(RES, "gls_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
 ###            (5)    Figures and tables for presence/absence range shift ####
 ##############################################################################
 
-loadfonts(device='win')
+loadfonts(device = 'win')
 
 fia.dataprep.fcn <- function(results.file) {
   rX <- read_csv(results.file)
@@ -507,7 +515,7 @@ fia.dataprep.fcn <- function(results.file) {
   rX
 }
 
-r1 <- fia.dataprep.fcn(paste0(RES, "sumtaylor_num_", SELECT.VAR, "_", RESP.TIMING,  ".csv")) %>% filter(spp.codes != 768) %>%
+r1 <- fia.dataprep.fcn(paste0(RES, "sumtaylor_", SELECT.VAR, "_", RESP.TIMING,  ".csv")) %>% filter(spp.codes != 768) %>%
   arrange(desc(temactmean))
 r1.order <- r1 %>% select(Spp.symbol) %>%
   mutate(order = seq(1:n()))

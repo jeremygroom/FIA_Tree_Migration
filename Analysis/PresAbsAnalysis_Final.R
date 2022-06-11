@@ -34,12 +34,12 @@ library(grid)
 library(gridExtra)
 library(ggplotify) # enables as.grob() function
 
-loadfonts(device='win')
+loadfonts(device = 'win')
 
 
 
-for(x in 1:2){
-  for(y in 1:2) {
+for (x in 1:2) {
+  for (y in 1:2) {
     
 ############## 
 # -- some constants
@@ -261,7 +261,7 @@ write_csv(sumtaylor,paste0(RES, 'sumtaylor_occ_', SELECT.VAR, '_', RESP.TIMING, 
 #################################################################################
 
 no_cores <- detectCores(logical = TRUE)  # returns the number of available hardware threads, and if it is FALSE, returns the number of physical cores
-cl <- makeCluster(no_cores  -1)  
+cl <- makeCluster(no_cores - 1 )  
 registerDoParallel(cl) 
 
 
@@ -273,7 +273,7 @@ actmean2 <- function(datorig,datrevis,resp.orig,resp.revis) {     #resp.orig, re
   Zf_i <- Zs_i <- Yf_i <- Ys_i <- matrix(rep(0, length(strat3[, 1]) * 50), nrow = length(strat3[, 1]))  # Weighted values for each strata
   datorigY <- datorig[, 14:63] * datorig[, 13]
   datrevisY <- datrevis[, 14:63] * datrevis[, 13]
-  for(h in 1:length(strat3[, 1])){                  # h indexes strata
+  for (h in 1:length(strat3[, 1])) {                  # h indexes strata
     Zf_i[h, ] <- apply(datorig[datorig[, 9] == strat3[h, 1], 14:63], 2, sum) 
     Zs_i[h, ] <- apply(datrevis[datrevis[, 9] == strat3[h, 1], 14:63], 2, sum) 
     Yf_i[h, ] <-   apply(datorigY[datorig[, 9] == strat3[h, 1], 1:50], 2, sum) 
@@ -320,7 +320,7 @@ boot.out <- foreach(j = 1:n.iter) %dopar% {
 }
 Sys.time() - k
 
-for(i in 1:n.iter) {bs.means[, i] <- boot.out[[i]]$boot.means} 
+for (i in 1:n.iter) {bs.means[, i] <- boot.out[[i]]$boot.means} 
 
 ## 25 seconds for 200, should take 42 minutes (took 40)
 

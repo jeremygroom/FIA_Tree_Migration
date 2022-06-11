@@ -61,11 +61,11 @@ EstComp_Server <- function(id) {
       t.sel2 <- as.numeric(input$time2)      
       
       
-#      browser()
+      #browser()
       resp.name <- c("temactmean", "mean")
       
       # See dataprep function in functions.r
-      r1 <- fia.dataprep.fcn(o.n.sel, p.t.sel1, t.sel1, e.bs.sel1) %>% arrange(desc(get(resp.name[as.numeric(input$est.bs1)])))
+      r1 <- fia.dataprep.fcn(o.n.sel, p.t.sel1, t.sel1, e.bs.sel1) %>% arrange(desc(response))
       
       r1.order <- r1 %>% select(Spp.symbol) %>%
         mutate(order = seq(1:n()))
@@ -85,10 +85,10 @@ EstComp_Server <- function(id) {
                            title.time[as.numeric(input$time1)], title.e.bs[as.numeric(input$est.bs1)])
       plt2.title <- paste0(title.o.n[as.numeric(input$occ.num)], title.p.t[as.numeric(input$metric2)], "\n",
                            title.time[as.numeric(input$time2)], title.e.bs[as.numeric(input$est.bs2)])
-      
+
       # Calling on plotting functions from functions.r
-      q1 <- e.c.plot.fcn(r1, resp.name[as.numeric(input$est.bs1)], gls.vals1, plt1.title, r1$SciName2, NULL, 1)# r1$SciName2, NULL, 1 )#
-      p1 <- e.c.plot.fcn(r2, resp.name[as.numeric(input$est.bs2)], gls.vals2, plt2.title, r2$Spp.symbol, NULL, 0)#1)
+      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, NULL, 1)# r1$SciName2, NULL, 1 )#
+      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, NULL, 0)#1)
 
       # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
       ##  Change y-axis of p1 to null

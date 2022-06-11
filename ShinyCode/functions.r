@@ -6,6 +6,9 @@ fia.dataprep.fcn <- function(o.n.x, p.t.x, t.x, e.bs.x){
   rX$sig <- ifelse((rX$LCI < 0 & rX$UCI < 0) | (rX$LCI > 0 & rX$UCI > 0), 1, 0)
   rX$SciName2 <- ifelse(rX$sig == 1, paste0("***", rX$SciName, "***" ), paste0("*", rX$SciName, "*" ))
   rX %>% filter(spp.codes != 768)
+  names(rX)[which(names(rX) == "mean" | names(rX) == "temactmean")] <- "response"
+  names(rX)[which(names(rX) == "sppname" | names(rX) == "SppNames")] <- "SppNames"
+  rX
 }
 
 
