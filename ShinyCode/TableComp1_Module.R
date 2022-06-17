@@ -3,7 +3,15 @@
 
 TabVarTiming_UI <- function(id) {
   tagList(
-    fluidRow(column(width = 10, offset = 2, h1("Comparisons of Variance Estimation and Timing Approaches on Species' Results"))),
+    fluidRow(column(width = 10, offset = 1, align = "center", h1("Comparisons of Variance Estimation and Timing Approaches on Species' Results"))),
+    fluidRow(column(width = 8, offset = 2, align = "center",
+                    box(width = 12,
+                        p("The purpose of this page is to explore differences in estimates between timing (using temperture or precipitation data
+                          from the 10 years preceeding the first or second visit) or variance estimation approach (Taylor series approximation or
+                          bootstrap).  If the user selects \"Timing (First vs. second 10 years\" the two data frames will show the difference in estimates
+                          for the second minus first 10 years for both the Taylor series expansion and bootstrap variance estimation.  At the bottom of the 
+                          page are two histograms of the percentage difference columns.  For the example given with Analysis type = Occupancy and Metric = 
+                          Temperature, we see that the second set of 10 years produce typically wider confidence intervals than the first 10 years.", style = "font-size:20px")))),
     fluidRow(column(width = 3, offset = 1, 
                     selectInput(NS(id, "occ.num"), label = h3("Select analysis type"),
                                 choices = list("Occupancy" = 1, 
@@ -117,7 +125,7 @@ TabVarTiming_Server <- function(id) {
         geom_hline(yintercept = 0) +
         labs(title = hist1.title, y = "Number of Species") + 
         theme_bw() + 
-        theme(text = element_text(size = 20))
+        theme(text = element_text(size = 12))
       
 #browser()
           })
@@ -137,7 +145,7 @@ TabVarTiming_Server <- function(id) {
         geom_hline(yintercept = 0) +
         labs(title = hist2.title, y = "Number of Species") + 
         theme_bw() + 
-        theme(text = element_text(size = 20))
+        theme(text = element_text(size = 12))
       
     })
     

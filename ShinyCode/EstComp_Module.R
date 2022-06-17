@@ -1,3 +1,5 @@
+#### Comparison of Species Change Estiamtes  ####
+##     --- First page ---  ###
 
 
 
@@ -5,12 +7,21 @@
 
 EstComp_UI <- function(id) {
   tagList(
-    fluidRow(column(width = 4, offset = 1, 
-                    selectInput(NS(id, "occ.num"), label = h5("Select analysis type"),
-                                choices = list("Occupancy" = 1, 
-                                               "Number" = 2)))),
-    fluidRow(column(width = 8, plotOutput(NS(id, "plot_estcomp"), height = 700))),
-    fluidRow(column(width = 4, offset = 1,
+    fluidRow(column(width = 6, offset = 3, align = "center", h1("Comparison of Species' Estimates"))),
+    fluidRow(column(width = 8, offset = 2, align = "center",
+                    box(width = 12,
+                        p("This plot allows the side-by-side comparison of different analysis types.  Occupancy analyses are those
+                   which show the difference in the range-wide temperature or precipitation values for a species between the first and 
+                   second visit.  The temperature or precipitation values used are estiamted from either the first 10 years up to the first visit
+                   or from the second ten years up to the second visit.  Users may also
+                   select which variance estimation procedure was used - either variance approximated through a Taylor series expansion (Estimate)
+                   or arrived at through a bootstrap procedure (Bootstrap)", style = "font-size:20px")))),
+    
+    fluidRow(column(width = 8, plotOutput(NS(id, "plot_estcomp"), height = 700)),
+             column(width = 4, h2("Select analysis type"),
+                    fluidRow(width = 12, selectInput(NS(id, "occ.num"), label = NULL,
+                                                     choices = list("Occupancy" = 1, 
+                                                                    "Number" = 2))),
                     fluidRow(width = 12, h2("Left Figure Options")),
                     fluidRow(width = 12, selectInput(NS(id, "est.bs1"), label = h5("Estimate or bootstrap"),
                                                      choices = list("Estimate" = 1, 
@@ -21,22 +32,25 @@ EstComp_UI <- function(id) {
                                                                     "Temperature" = 2))),
                     fluidRow(width = 12, selectInput(NS(id, "time1"), label = h5("Select time perspective"),
                                                      choices = list("First 10 years" = 1,
-                                                                    "Second 10 years" = 2)))),
-
-             column(width = 4, offset = 1,
-                    fluidRow(width = 12, h2("Right Figure Options")),
-                    fluidRow(width = 12, selectInput(NS(id, "est.bs2"), label = h5("Estimate or bootstrap"),
-                                                     choices = list("Estimate" = 1, 
-                                                                    "Bootstrap" = 2),
-                                                     selected = 2)),
-                    fluidRow(width = 12, selectInput(NS(id, "metric2"), label = h5("Select analysis metric"),
-                                                     choices = list("Precipitation" = 1, 
-                                                                    "Temperature" = 2))),
-                    fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
-                                                     choices = list("First 10 years" = 1,
-                                                                    "Second 10 years" = 2))))
+                                                                    "Second 10 years" = 2))),
+                    
+                    fluidRow(column(width = 12, 
+                                    fluidRow(width = 12, h2("Right Figure Options")),
+                                    fluidRow(width = 12, selectInput(NS(id, "est.bs2"), label = h5("Estimate or bootstrap"),
+                                                                     choices = list("Estimate" = 1, 
+                                                                                    "Bootstrap" = 2),
+                                                                     selected = 2)),
+                                    fluidRow(width = 12, selectInput(NS(id, "metric2"), label = h5("Select analysis metric"),
+                                                                     choices = list("Precipitation" = 1, 
+                                                                                    "Temperature" = 2))),
+                                    fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
+                                                                     choices = list("First 10 years" = 1,
+                                                                                    "Second 10 years" = 2))))
+                    )
+             )
     )
   )
+  
 }
 
 
@@ -47,7 +61,7 @@ EstComp_Server <- function(id) {
   
   moduleServer(id, function(input, output, session) {
     
-
+    
     
     
     output$plot_estcomp <- renderPlot({
@@ -85,11 +99,11 @@ EstComp_Server <- function(id) {
                            title.time[as.numeric(input$time1)], title.e.bs[as.numeric(input$est.bs1)])
       plt2.title <- paste0(title.o.n[as.numeric(input$occ.num)], title.p.t[as.numeric(input$metric2)], "\n",
                            title.time[as.numeric(input$time2)], title.e.bs[as.numeric(input$est.bs2)])
-
+      
       # Calling on plotting functions from functions.r
       q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, NULL, 1)# r1$SciName2, NULL, 1 )#
       p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, NULL, 0)#1)
-
+      
       # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
       ##  Change y-axis of p1 to null
       q1 <- as.grob(q1)

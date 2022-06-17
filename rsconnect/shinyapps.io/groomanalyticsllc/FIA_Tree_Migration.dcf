@@ -1,0 +1,14 @@
+name: FIA_Tree_Migration
+title: FIA_Tree_Migration
+username:
+account: groomanalyticsllc
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6508503
+bundleId: 6018623
+url: https://groomanalyticsllc.shinyapps.io/FIA_Tree_Migration/
+when: 1655502349.52185
+lastSyncTime: 1655502349.52186
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Analysis questions.docx|NumberMeans.csv|NumberMeans.xlsx|Task List.txt

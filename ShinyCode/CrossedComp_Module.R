@@ -1,19 +1,30 @@
-
-
+### Crossed comparison of species change estimates ###
+###    --- Second Page ---       ###
 
 
 
 CrossedComp_UI <- function(id) {
   tagList(
+    fluidRow(column(width = 8, offset = 2, align = "center", h1("Crossed Comparison of Species Change Estimates"))),
+    fluidRow(column(width = 8, offset = 2, align = "center",
+                    box(width = 12,
+                        p("This plot displays the means and confidence intervals plotted in the previous page, except along the X and Y axes. 
+                          This enables users to compare, say, species' density changes by plot temperature or precipitation values.  The plot
+                          can show all species (overwhelming), paired species (those that appear in the occupancy and density analyses), 
+                          significant species (at least one confidence interval for a species does not include zero), or paired and significant species.
+                          Scroll down to select analysis variables of interest.", style = "font-size:20px")))),
+    
     fluidRow(column(width = 8, plotlyOutput(NS(id, "plot_crossedcomp"), height = 700)),
-             column(width = 4, radioButtons(NS(id, "results.show"), label = h5("Results to Show"),
+             column(width = 4,
+                    box(width = 12, radioButtons(NS(id, "results.show"), label = h2("Results to Show"),
                                             choices = list(
                                               "All Species" = 1,
                                               "Paired Species" = 2,
                                               "Significant Species" = 3,
                                               "Paired Significant Species" = 4),
-                                            selected = 3))),
-    fluidRow(column(width = 4, offset = 1,
+                                            selected = 3)))),
+    fluidRow(box(width = 8, 
+                 column(width = 4, offset = 1,
                     fluidRow(width = 12, h2("Y-axis Options")),
                     fluidRow(column(width = 12,  
                                     selectInput(NS(id, "occ.num1"), label = h5("Select analysis type"),
@@ -46,6 +57,7 @@ CrossedComp_UI <- function(id) {
                     fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
                                                      choices = list("First 10 years" = 1,
                                                                     "Second 10 years" = 2))))
+    )
     )
   )
 }
@@ -122,8 +134,8 @@ CrossedComp_Server <- function(id) {
         
       }
        
-      #browser()
-        crossed.plt <- ggplot(r3, aes(response.x, response.y, text = SppNames)) +   # fct_reorder allows for reording the factor level (forecats in tidyverse)
+#      browser()
+        crossed.plt <- ggplot(r3, aes(response.x, response.y, text = paste0(SciName, "\n", SppNames))) +   # fct_reorder allows for reording the factor level (forecats in tidyverse)
           geom_hline(yintercept = 0, size = 0.1) + 
           geom_vline(xintercept = 0, size = 0.1) +
           geom_linerange(aes(y = response.y, ymin = LCI.y, ymax = UCI.y, color = sig.y)) +

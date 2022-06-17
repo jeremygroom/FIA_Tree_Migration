@@ -52,7 +52,7 @@ west_county <- subset(counties, region == "california" | region == "oregon" | re
   # Load temp/precip/latlong for all used points.
 PR1.2. <- read_csv("Data/precip.1st.2nd.csv", show_col_types = FALSE) 
 LL <- read_csv("Data/PlotLatLon.csv", show_col_types = FALSE) %>% dplyr::select(-n)
-TC1.2. <- read_csv("Data/tmp.1st.2nd.csv", show_col_types = FALSE) %>%
+TC1.2. <- read_csv("Data/tmp.1st.2nd.csv", show_col_types = FALSE) %>%  # All precipitation and temperature data.
   left_join(PR1.2., by = c("STATECD", "PLOT_FIADB", "INVYR")) %>% 
   mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD)),
          change.temp = post.temp - pre.temp,

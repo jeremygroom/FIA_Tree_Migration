@@ -19,6 +19,7 @@ library(ggplotify) # enables as.grob() function
 library(plotly)
 library(maps)
 library(hexbin) # For plotting hexagons to summarize many data points.  May want to remove this. 
+library(ggridges)
 
 
 FIAapp <- function(){
@@ -44,8 +45,9 @@ FIAapp <- function(){
       sidebarMenu(
         menuItem(HTML("Comparison of species<br/>change estimates"), tabName = "EstComp"),
         menuItem(HTML("Crossed comparison of<br/>species change estimates"), tabName = "CrossedComp"),
-        menuItem(HTML("Tabular comparison of<br/>difference for variance<br/>and timing approaches"), tabName = "Tab1Comp"),
-        menuItem(HTML("Map of temperature, precipitation,<br/>and their changes over time"), tabName = "map1")
+        menuItem(HTML("Map of temperature, precipitation,<br/>and their changes over time"), tabName = "map1"),
+        menuItem(HTML("Tabular comparison of<br/>difference for variance<br/>and timing approaches"), tabName = "Tab1Comp")
+
       )),
       dashboardBody(
         tags$head(         # CSS to make the header have a consistent color
@@ -67,13 +69,13 @@ FIAapp <- function(){
                   fluidRow(
                     CrossedComp_UI("CrossedComp1")
                   )),
-          tabItem(tabName = "Tab1Comp",
-                  fluidRow(
-                    TabVarTiming_UI("TabVarTiming")
-                  )),
           tabItem(tabName = "map1",
                   fluidRow(
                     Map1_UI("MapFig1")
+                  )),
+          tabItem(tabName = "Tab1Comp",
+                  fluidRow(
+                    TabVarTiming_UI("TabVarTiming")
                   )))
       )
   )
@@ -81,8 +83,9 @@ FIAapp <- function(){
   server <- function(input, output, session) {
     output$EstComp1 <- EstComp_Server("EstComp1") 
     output$CrossedComp1 <- CrossedComp_Server("CrossedComp1")
-    output$TabVarTiming <- TabVarTiming_Server("TabVarTiming")
     output$MapFig1 <- Map1_Server("MapFig1")
+    output$TabVarTiming <- TabVarTiming_Server("TabVarTiming")
+
     
   }
   

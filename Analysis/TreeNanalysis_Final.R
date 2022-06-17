@@ -632,7 +632,42 @@ n.num.plotBS.vs.Est <- tibble(Vals = c("n", "Mean", "LCI", "UCI"), Ests = c(n.es
 write_csv(n.num.plotBS.vs.Est, paste0(RES, "n.num.PlotBSvsEst_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
 
 
-  }
+  } # Ending first/second visit for-loop
+  
+  ## Examining change metrics for temperature and precipitation
+  
+  resp.values.all <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>% 
+    dplyr::select(-INVYR)
+  
+  which(names())  
+  
+  resp.names <- c("temp", "precip")
+  
+  gt.2 <- gt %>% dplyr::select(PLOT_FIADB, STATECD, contains("X")) %>%
+    pivot_longer(cols = contains("X"), names_to = "SppCodes", values_to = "gt")
+        
+  lt.2 <- lt %>% dplyr::select(PLOT_FIADB, STATECD, contains("X")) %>%
+    pivot_longer(cols = contains("X"), names_to = "SppCodes", values_to = "lt")
+  
+  num.means1 <- left_join(gt.2, lt.2, by = c("PLOT_FIADB", "STATECD", "SppCodes")) %>%
+    filter(gt + lt > 0 ) %>%
+    left_join(resp.values.all, by = c("PLOT_FIADB", "STATECD") ) %>%
+    mutate(delta.resp = get(paste0("post.", resp.names[x])) - get(paste0("pre.", resp.names[x])),
+           SppCodes = as.numeric(substr(SppCodes, 2, nchar(SppCodes)))) %>%
+    group_by(SppCodes) %>%
+    summarize(mean.change.gt = mean(delta.resp[gt == 1]),
+              mean.change.lt = mean(delta.resp[lt == 1]),
+              mean.change = mean(delta.resp),
+              mean.first.gt = mean(get(paste0("pre.", resp.names[x]))[gt == 1]),
+              mean.first.lt = mean(get(paste0("pre.", resp.names[x]))[lt == 1]),
+              mean.first = mean(get(paste0("pre.", resp.names[x]))),
+              mean.second.gt = mean(get(paste0("post.", resp.names[x]))[gt == 1]),
+              mean.second.lt = mean(get(paste0("post.", resp.names[x]))[lt == 1]),
+              mean.second = mean(get(paste0("post.", resp.names[x])))
+    ) %>%
+    left_join(spp.names, by = c("SppCodes" = "spp.codes"))
+    
+
 }
 
 
