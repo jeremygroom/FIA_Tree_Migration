@@ -22,7 +22,7 @@ for (i in 1:length(o.n.)) {             # Occupancy vs. tree number analyses
     for (k in 1:2) {                    # Timing (1 = use initial 10 yrs, 2 = use second 10 yrs)
       for (l in 1:length(e.bs)) {       # Taylor-series expansion estimation vs. bootstrap
         fileX <- paste0("Results/", o.n.folder[i], p.t.folder[j], k, "/", e.bs.file[l], p.t.folder[j], "_", timing[k], ".csv")
-        datX <- read_csv(fileX, show_col_types = FALSE)
+        datX <- read_csv(fileX, show_col_types = FALSE) %>% filter(spp.codes != 768)  # Removing bitter cherry
         dat1 <- append(dat1, list(datX))
         names.dat1 <- c(names.dat1, paste0(o.n.[i], p.t.[j], timing[k], ".", e.bs[l]))
         

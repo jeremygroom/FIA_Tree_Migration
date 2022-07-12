@@ -30,7 +30,7 @@ FIAapp <- function(){
   source("ShinyCode/Map1_Module.R")
   source("ShinyCode/functions.r")
   
-  addResourcePath(prefix = 'www', directoryPath = 'ShinyCode/')
+#  addResourcePath(prefix = 'www', directoryPath = 'ShinyCode/')
   
   ui <- dashboardPage(
     
