@@ -1,5 +1,10 @@
 ##
 
+## Some constants:
+metric.chng.res.loc <- "Results/MetricChange_Results/"
+
+
+
 
 
 ## Setting up a rather deep loop to gather all estimate and bootstrap outputs plus the GLS CI output
@@ -76,15 +81,19 @@ spp.names <- read_csv("Results/Occ_Results/annpre1/bs.results2_annpre_1.csv", sh
   filter(spp.codes != 768)  # removing bitter cherry
 
 spp.names2 <- spp.names
-spp.names2$id <- 2:(nrow(spp.names) + 1)
+spp.names2$id <- 3:(nrow(spp.names) + 2)
 
 map.choices <-  split(spp.names2$id, spp.names2$sel.names)
-map.choices <- c(list(All = 1), map.choices)
+map.choices <- c(list(`All Plots` = 1), list(`All Analyzed Plots` = 2), map.choices)
 
 spp.gt <- colnames(num_gt)[grep("X", colnames(num_gt))]
 spp.gt <- as.numeric(substr(spp.gt, 2, nchar(spp.gt)))
 spp.absent.gt <- spp.names2 %>% mutate(gt.spp = ifelse(spp.codes %in% spp.gt, 1, 0)) %>%
   filter(gt.spp == 0)
 
-
-
+  ## 
+  ch.TempV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.temp_delta.T.rds")) 
+  ch.TempV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.temp_delta.T.rds")) 
+  ch.PrecipV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.precip_delta.P.rds")) 
+  ch.PrecipV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.precip_delta.P.rds")) 
+  

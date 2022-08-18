@@ -1,0 +1,735 @@
+---
+title: "West coast U.S. tree species evidence shifts in density but not distribution in response to climate change"
+author: "Jeremiah Groom and Vicente Monleon"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::knit_hooks$set(inline = function(x) {   if (!is.numeric(x)) {x} else { prettyNum(round(x, 2), big.mark = ",") } })  # This places commas to delineate thousands places
+```
+
+
+```{r libraries.to.load}
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(ggplotify) # enables as.grob() function
+library(png)
+library(knitr)
+library(readxl)
+library(writexl)
+library(xfun)
+library(ggspatial)
+library(sp)
+library(cowplot)
+library(rnaturalearth)
+library(parallel)      # Parallel computation, for running analysis of metric change.
+library(spdep)  # Spatial dependence
+library(spatialreg)
+```
+
+
+```{r constants}
+data.file.loc <- "Data/"
+ms.file.loc <- "Manuscript/" 
+occ.temp.res.loc <- "Results/Occ_Results/Temp1/"
+occ.precip.res.loc <- "Results/Occ_Results/annpre1/"
+num.temp.res.loc <- "Results/TreeNum_Results/Temp1/"
+num.precip.res.loc <- "Results/TreeNum_Results/annpre1/"
+metric.chng.res.loc <- "Results/MetricChange_Results/"
+  
+ # For the metric change analysis, loading correct files for precipitation and temperature
+prepost2_temp <- "pre.temp"
+deltaTP2_temp <- "delta.T"
+
+prepost2_precip <- "pre.precip"
+deltaTP2_precip <- "delta.P"
+
+
+
+
+```
+
+
+```{r load_data}
+source("ShinyCode/global.R")
+source("ShinyCode/functions.r")
+
+total.plots <- read_csv(paste0(data.file.loc, "plot052120.csv"))
+occ_orig <- read_csv(paste0(data.file.loc, "Occ_OriginalVisit.csv"), show_col_types = FALSE) %>% dplyr::select(State_Plot, TEMP, starts_with("X")) 
+oo.sum <- apply(occ_orig[, 3:ncol(occ_orig)], 1, sum) # Sum of all used tree spp occupancy codes across first-visit plots
+occ_revis <- read_csv(paste0(data.file.loc, "Occ_Revisit.csv"), show_col_types = FALSE) %>% dplyr::select(State_Plot, TEMP, starts_with("X")) 
+or.sum <- apply(occ_revis[, 3:ncol(occ_revis)], 1, sum) # Sum of all used tree spp occupancy codes across secon-visit plots
+occ_total <- oo.sum + or.sum        # Combining first & second visit occupancy codes to determine how many plots were occupied by >= 1 of our species.
+
+
+tot.num.gt.lt <- read_csv(paste0(data.file.loc, "Total.Num.GT.LT.csv"))          # Used for greater than/less than numbers of trees in plot for Table 1.
+not.used.spp <- read_csv(paste0(occ.temp.res.loc, "NotUsedSpp_Temp_1.csv"))   %>%                   # For Table 1, species not included in the analysis
+  filter(SciName != "Prunus spp.", SciName != "Salix spp.", SciName != "Tree unknown")
+  # Temperature range-shift (occupancy) results
+occ.results.t <- dat1$occ.t1.e %>% 
+  mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
+         warmer = ifelse(LCI > 0 & UCI > 0, 1, 0))
+ # Precipitation range-shift results
+occ.results.p <- dat1$occ.p1.e %>% 
+  mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
+         wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
+
+  # Temperture density (number) results
+num.results.t <- dat1$num.t1.e %>% 
+  mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
+         warmer = ifelse(LCI > 0 & UCI > 0, 1, 0))
+
+  # Precipitation density results
+num.results.p <- dat1$num.p1.e %>% 
+  mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
+         wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
+
+
+num.gls.t <- gls1$gls.num.t1
+num.gls.p <- gls1$gls.num.p1
+
+num.BSresults <- dat1$num.t1.bs %>% 
+  mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
+         warmer = ifelse(LCI > 0 & UCI > 0, 1, 0)) 
+
+#n.num.PlotBSvsEst <- read_csv(paste0(data.file.loc, "/TreeNum_Results/n.num.PlotBSvsEst.csv"))
+
+ml.results <- read_csv(paste0(data.file.loc, "MonleonLintz.csv"))
+
+```
+
+
+```{r prepare_data_outputs}
+total.plot.num <- length(unique(paste0(total.plots$PLOT_FIADB, total.plots$STATECD)))  # This includes intensification plots, which were not used in the 2015 paper
+total.plot.for.num <- length(unique(paste0(total.plots$PLOT_FIADB[total.plots$propfor > 0], total.plots$STATECD[total.plots$propfor > 0])))  # Proportion forested > 0
+
+total.plot.miss.num <- length(unique(paste0(total.plots$PLOT_FIADB[total.plots$propmiss == 1], total.plots$STATECD[total.plots$propmiss == 1])))  # Proportion missed = 1.  Right? about 1k higher than before
+total.plots.occ <- length(occ_total[occ_total != 0])
+
+
+# Table 1
+  # This code combines output from the occupancy and tree number analyses
+t1 <- dat1$occ.p1.e %>% left_join(tot.num.gt.lt, by = c("spp.codes" = "SPCD")) %>%
+  dplyr::select(SciName, Spp.symbol, n.orig, n.revis, n_1, n_3)
+names(t1) <- c("Species", "Symbol", "First Visit", "Second Visit", "Lost", "Gained")
+t1$Species <- paste0(rep("*", nrow(t1)), t1$Species, rep("*", nrow(t1)))
+write_xlsx(t1, paste0(ms.file.loc, "Table1.xlsx"))
+
+# Related to Table 1
+
+nOccSpp <- numbers_to_words(nrow(t1), cap = F, hyphen = F)
+minOccPlots <- min(t1[, c(3, 4)])                    # Minimum number of plots occupied at either time period by any species
+nNtreeSpp <- numbers_to_words(nrow(t1[t1$Lost > 50 & t1$Gained > 50, ]), cap = T)  # Number of tree-number analysis species reported on 
+minNtreePlots <- min(t1[t1$Lost > 50 & t1$Gained > 50, c(5, 6)])  # Minimum number of gained/lost plots used for tree-number analysis of any species 
+
+not.used.spp.vec <- not.used.spp$SciName
+not.used.spp.vec1 <- paste0(not.used.spp.vec[1:(length(not.used.spp.vec) - 1)], collapse = ", ")
+not.used.spp.vec2 <- not.used.spp.vec[length(not.used.spp.vec) ]
+
+# Results Paragraph 1
+
+n.occ.cooler.all <-  numbers_to_words(length(occ.results.t$temSE[occ.results.t$temactmean < 0]), cap = T, hyphen = FALSE)
+n.occ.cooler <- sum(occ.results.t$cooler)
+n.occ.warmer <- sum(occ.results.t$warmer)
+occ.warmer.spp <- paste0(occ.results.t$SciName[occ.results.t$warmer == 1], collapse = ", ")
+occ.cooler.spp <- occ.results.t$SciName[occ.results.t$cooler == 1]
+p.est.occ.t <- round((1 - pbinom((n.occ.cooler + n.occ.warmer), nrow(t1), 0.025)), digits = 3) 
+
+# Results Paragraph 2
+
+n.occ.drier.all <-  numbers_to_words(length(occ.results.p$temSE[occ.results.t$temactmean < 0]), cap = F, hyphen = FALSE)
+n.occ.wetter <- sum(occ.results.p$wetter)
+n.occ.drier <- sum(occ.results.p$drier)
+occ.wetter.spp <- paste0(occ.results.p$SciName[occ.results.p$wetter == 1], collapse = ", ")
+occ.drier.spp <- occ.results.p$SciName[occ.results.p$drier == 1]
+p.est.occ.p <- round((1 - pbinom((n.occ.wetter + n.occ.drier), nrow(t1), 0.025)), digits = 3) 
+
+# Results Paragraph 4
+
+n.num.cooler <- sum(num.results.t$cooler)
+n.num.warmer <- sum(num.results.t$warmer)
+num.warmer.spp <- num.results.t$SciName[num.results.t$warmer == 1]
+num.cooler.spp <- paste0(num.results.t$SciName[num.results.t$cooler == 1], collapse = ", ")
+p.est.num <- round((1 - pbinom((n.num.cooler + n.num.warmer), nrow(num.results.p), 0.025)), digits = 3) 
+num.gls.t <- round(num.gls.t, 3) 
+
+# Results Paragraph 5
+
+n.num.drier.all <- numbers_to_words(length(num.results.p$temSE[num.results.t$temactmean < 0]), cap = F, hyphen = FALSE)
+n.num.wetter <-  sum(num.results.p$wetter)
+n.num.drier <- sum(num.results.p$drier)
+num.wetter.spp <- num.results.p$SciName[num.results.p$wetter == 1]
+num.drier.spp <- paste0(num.results.p$SciName[num.results.p$drier == 1], collapse = ", ")
+p.est.num <- round((1 - pbinom((n.num.wetter + n.num.drier), nrow(num.results.p), 0.025)), digits = 3) 
+num.gls.p <- round(num.gls.p, 3) 
+
+# Results Paragraph 6
+n.num.sig <- length(num.results.t$SciName[num.results.t[, 11:12] == 1])
+
+# Table 2
+occ1 <- occ.results.t %>% select(SciName, temactmean, cooler, warmer) %>% 
+  mutate(Range.occ = ifelse(temactmean < 0, "Cool", "Warm"),
+         sig.occ = ifelse(cooler == 1 | warmer == 1, 1, 0)) %>% select(-temactmean, -cooler, -warmer) %>%
+#occ2 <- occ.BSresults %>% select(SciName, mean, cooler, warmer) %>%   
+#  mutate(RangeBS = ifelse(mean < 0, "Cool", "Warm"),
+#         sig.occBS = ifelse(cooler == 1 | warmer ==1, 1, 0)) %>% select(-mean, -cooler, -warmer)
+#occ3 <- left_join(occ1, occ2, by = "SciName") %>%
+  mutate(Range = ifelse(sig.occ == 1 , paste0("**", Range.occ, "**"), Range.occ)) %>%
+#                        ifelse(sig.occ == 0 & sig.occBS ==1, paste0("***", Range.occ, "***"), Range.occ) )) %>%
+  select(SciName, Range)
+
+num1 <- num.results.t %>% select(SciName, temactmean, cooler, warmer) %>% 
+  mutate(Number.num = ifelse(temactmean < 0, "Cool", "Warm"),
+         sig.num = ifelse(cooler == 1 | warmer == 1, 1, 0)) %>% select(-temactmean, -cooler, -warmer) %>%
+#num2 <- num.BSresults %>% select(SciName, mean, cooler, warmer) %>%   
+#  mutate(NumberBS = ifelse(mean < 0, "Cool", "Warm"),
+#         sig.numBS = ifelse(cooler == 1 | warmer ==1, 1, 0)) %>% select(-mean, -cooler, -warmer)
+#num3 <- left_join(num1, num2, by = "SciName") %>%
+  mutate(Density = ifelse(sig.num == 1, paste0("**", Number.num, "**"), Number.num)) %>%
+#                        ifelse(sig.num == 0 & sig.numBS ==1, paste0("***", Number.num, "***"), Number.num) )) %>%
+  select(SciName, Density)
+
+tree.type <- ml.results %>% select(Species, Type)
+ml1 <- ml.results %>% select(Species, "Life Stage", sig) %>%
+  drop_na() %>%
+  mutate(`Life Stage` = ifelse(sig == 1, paste0("**", `Life Stage`, "**"), `Life Stage`)) %>%
+  select(-sig)
+t2 <- full_join(occ1, num1, by = "SciName")
+t2 <- full_join(t2, ml1, by = c("SciName" = "Species"))
+t2 <- full_join(t2, tree.type, by = c("SciName" = "Species"))
+t2[is.na(t2)] <- ""
+t2$SciName <- paste0("*", t2$SciName, "*")
+names(t2)[1] <- "Scientific Name"
+
+range.shift.angio <- length(t2$Type[t2$Range != "" & t2$Type == "Angio"])
+range.shift.gymno <- length(t2$Type[t2$Range != "" & t2$Type == "Gymno"])
+dens.shift.angio <- length(t2$Type[t2$Density != "" & t2$Type == "Angio"])
+dens.shift.gymno <- length(t2$Type[t2$Density != "" & t2$Type == "Gymno"])
+write_xlsx(t2, paste0(ms.file.loc, "Table2.xlsx"))
+
+
+## Table 3 prep
+
+if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds")),
+        file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))) == FALSE) {
+  source("ShinyCode/MetricChange_Regressions.R")  # If this runs (i.e., files are not found) it'll do so for ~ 4 hours.
+  
+} else if (file.exists(paste0(metric.chng.res.loc, "Table3.csv")) == FALSE) {
+  
+  # If Table 3 isn't found, first, read in the output from the MetricChange_Regressions.R function.  
+  chng.temp <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds"))
+  chng.precip <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))
+  
+  # Next, summarizing those findings for table 3.
+  chng.temp$slope.pos <- ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 > chng.temp$pred1) == TRUE, 1,
+                                ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 < chng.temp$pred1) == TRUE, -1, 0))
+  
+  chng.temp$intercept.pos <- ifelse((chng.temp$int.alone.est > 0) == TRUE , 1, 0)
+  
+  chng.precip$slope.pos <- ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 > chng.precip$pred1) == TRUE, 1,
+                                  ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 < chng.precip$pred1) == TRUE, -1, 0))
+  
+  chng.precip$intercept.pos <- ifelse((chng.precip$int.alone.est > 0) == TRUE , 1, 0)
+  
+  t3.delta.T <- chng.temp %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
+    group_by(factor(intercept.pos, levels = c(1, 0))) %>%
+    summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
+              sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
+              sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
+  
+  t3.delta.P <- chng.precip %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
+    group_by(factor(intercept.pos, levels = c(1, 0))) %>%
+    summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
+              sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
+              sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
+  
+  
+  # Creating the table
+  t3 <- bind_rows(t3.delta.T, t3.delta.P)
+  names(t3) <- c("Metric", "Intercept", "Slope +", "Slope -")
+  t3[, 1] <- c(paste0(c("+", "-", "+", "-"), "$\\Delta$", c("T", "T", "P", "P")))
+  
+  write_csv(t3, paste0(metric.chng.res.loc, "Table3.csv") ) 
+  
+} else {
+  
+  t3 <- read_csv(paste0(metric.chng.res.loc, "Table3.csv"))
+  t.int.pos <- t3$Intercept[1]
+  p.int.pos <- t3$Intercept[3]
+  p.int.neg <- t3$Intercept[4]
+  
+}
+
+```
+
+
+\pagenumbering{arabic}
+
+## Abstract
+Climate change is associated with species range shifts globally.  In North America and elsewhere tree species ranges are expected to shift at rates of meters to kilometers annually.  However, empirically detecting range shifts may be difficult due to the lack of quality long-term regional or national data.  Evidence of tree species range shifts is further confounded by apparently contradictory findings from studies that use different methods to evaluate species responses.  In this study we examine 10-year U.S. Forest Service Forest Inventory Analysis plot revisit data in the states of California, Oregon, and Washington.  We examine shifts in in tree species' ranges and plot densities relative to plot temperature and precipitation values using a design-based estimation technique.  We additionally examine how plot temperature and precipitation changed in the ten years between visits.  We found for 49 tree species that their ranges seldom shifted in the 10-year period but that nine out of 30 species' plot densities did, with densities generally increasing in initially cooler and drier plots (and/or decreasing in initially warmer and wetter plots).  Changes in species' plot temperatures were generally best modeled as uniform increases across initial plot temperatures while annual precipitation values did not necessarily increase or change uniformly.  These results indicate that west coast U.S. tree species' ranges may be unable to change as quickly as their ecological niches shift, although density shifts within ranges may already be underway, and that different regions of ranges may experience different ecological pressures.  
+
+## Introduction
+
+The rate of vegetation change between 2000 BCE and now is faster than during the post-glaciation period 18,000 years ago and likely caused by human impacts on plant species (Mottl et al. 2021).  Scientists have documented recent range shifts for a variety of terrestrial and marine taxa that correspond to a changing climate; e.g., latitudinal or elevational range shifts or changes in densities or cores within ranges  (see references in Lenoir and Svenning 2015).  For tree species, proximate climate-related drivers of range shifts may reduce species’ ranges. These drivers include insect and disease outbreaks and an increase in wildfire prevalence (Stanke et al. 2021, see references in Weed et al. 2013, Jolly et al. 2015).  Species range shifts can even occur in climatically unexpected directions such as towards lower elevations or latitudes (Lenoir et al. 2010).  For trees, such shifts may be due to anthropogenic causes aside from climate change (e.g., fire suppression; Minnich et al. 1995, Dolanc et al. 2014).  Although tree-range modeling broadly indicates that North American tree species should directionally migrate towards previously cooler regions (McKenney et al. 2007, Iverson et al. 2008, Loarie et al. 2009) and distributional shifts within ranges appear widespread (Fei et al. 2017, Murphy et al. 2010), there is scant empirical evidence that ranges are currently directionally shifting towards previously cooler regions (Zhu 2012, Sittaro 2017, Woodall 2018).  
+
+Modeling studies indicate that the ecological niches of many tree species in North America may shift substantially in the coming decades (McKenney et al. 2007, Iverson et al. 2008).  Serra-Diaz et al. (2014) modeled climate-related range shifts for eight oak (*Quercus*) and pine (*Pinus*) species in California over the next 80 years and estimated that range-shift velocities would be affected by terrain, with species inhabiting relatively flat terrain experiencing faster range shifts than those in steep terrain.  Loarie et al. (2009) found the same topographical relationship for the speed of temperature change within biomes, with mountainous biomes shifting on average by 0.08 km/yr while flatter biomes (mangroves, deserts, grasslands) shifting by 1.26 km/yr over the next 80 years.  It is imperative that we determine whether tree species (and others) can shift their ranges with sufficient speed to match the changes underway in their niche space; otherwise, species may face substantial range contractions (McKenny et al. 2007, Iverson et al. 2008) and require management interventions to overcome dispersal barriers.    
+
+Empirically detecting shifts in tree species' distributions and ranges is challenging.  Such analyses ideally access tree plot data collected using a geographically widespread and probabilistically-based sample design that has used consistent protocols for periodically revisiting plots across many years.  Unfortunately, such data are rare.  Sampling designs and data-collection protocols enacted by governments or other organizations may change over time and lack methodological consistency across political boundaries. Programs may not sample plots probabilistically.  Consequently, several analytical approaches have been used evaluate evidence of recent tree species range shifts.  
+  
+One method compares the distribution of seedlings or saplings relative to adults (Sittaro et al. 2017, Zhu et al. 2012, Monleon and Lintz 2015, Woodell et al. 2013, 2018). Seedling ranges may shift into previously unoccupied but newly favorable areas and out of regions that have become unsupportive of that life stage (the Migration Hypothesis, Zhu et al. 2014). This sort of analysis has been done primarily by examining seedling or sapling and adult plot occupancy within longitudinal strips and estimating responses by examining means of range limits for each age type. In these studies, latitude serves as a proxy for a climate-change signal. This may be justified as models (McKenney et al. 2007, Iverson et al. 2008) indicate that climate change may be expected to result in northerly range shifts.  However, this technique may have some drawbacks.  Seedling or saplings and adult distributions do not necessarily behave as predicted when analyses of their distributions are performed using revisit data. Sittaro et al. (2017) found evidence of seedling ranges shifting northward at a more rapid pace than adults, but they did not find that seedling ranges extended farther north than adults. Woodall et al. (2018) similarly found seedlings south of adults.  Zhu et al. (2014) proposed the Turnover Hypothesis to explain observed patterns: warmer and wetter conditions could increase turnover rates, promoting elevated rates of mortality and recruitment. Their analysis of 65 species in the eastern United States supported the Turnover Hypothesis over the Migration Hypothesis.  Regardless, using the longitudinal strip method, Zhu et al. (2012) and Woodall et al. (2013, 2018) did not find evidence from seedling/sapling and adult distributions that many species were shifting their range northward in the eastern United States (but see Sittaro et al. 2017).     
+
+Another approach for evaluating species’ responses to a changing climate is to quantify distribution shifts within ranges towards more habitable range edges instead of quantifying range edge changes (Kelly and Goulden 2008).  Fei et al. (2017) and Murphy et al. (2010) found shifts in plot abundance and occupancy within tree species’ ranges in the eastern United States northward (Murphy et al.) or nortward and/or westward (Fei et al.).  Although these analyses do not capture changes in species geographical extents, they may be more sensitive to initial shifts in distribution. However, observing distributional shifts within ranges instead of shifts in range edges may indicate that a species lacks the ability to adjust to climatic shifts (Liang et al. 2018).  
+
+Monleon and Lintz (2015) used an analytical methodology that differed from the longitudinal strip approach for comparing the distribution of seedlings and adults.  They examined design-based estimates of mean seedling vs. mature tree distributions across California, Washington, and Oregon along gradients of elevation, latitude, and sample plot average temperatures.  Across species they found seedlings to inhabit cooler plots (based on plot means temperatures from 1970 - 2000) than mature trees.  They found that using plot temperature instead of latitude or elevation sidestepped assumptions inherent in relying on either latitude or elevation as proxies for temperature.  Their findings appear to contradict those of Zhu (2012) and Woodall et al. (2013, 2018) who did not find similar range shifts.    
+
+Previous studies have utilized different techniques for assessing the evidence of tree species distribution responses to a shifting climate.  Some findings, such as species range expansion with seedlings trailing adults (Fei et al. 2017, Sittaro et al. 2017, Woodall et al. 2018), appear counterintuitive or contradictory.  The Lenoir and Svenning (2015) literature review concluded that, for forecasting biodiversity responses to climate, multifaceted approaches are needed to provide comprehensive assessments of species range shifts.  They recommend that researchers examine the trailing and leading edge responses of species’ ranges as well as the “optimum” within-range habitat (i.e., abundance).  They also recommend that these features be examined along latitudinal, elevational, and longitudinal gradients.  The U.S. Forest Service Forest Inventory and Analysis Program (FIA) has, within the last decade, collected 10-year repeat visit data for their sample plots.  We use these data to obtain design-based estimates of species responses over the revisit time period.  
+
+Our goal is to evaluate the evidence of tree species distribution responses given available data for the states of Washington, Oregon, and California, USA.  This study uses a modified version of Monleon and Lintz (2015) analysis approach and examines the same pool of vegetation sampling plots.  We examine distribution responses of tree species through the use of two metrics, shifts in occupied plot patterns between plot visits ("range shifts") and changes in the number of trees per plot ("density shifts"), and two variables, average annual plot temperature and precipitation.  We assess range and density shifts relative to plot temperature averages from the ten years prior to and including the initial plot visit year.  The analyses of our two metrics enable a side-by-side comparison of two metrics of temperature and precipitation response by tree species from across their ranges within the western USA.  The nature of the revisit data collection also allowed us to examine how plot temperature and precipitation changed for each species during that time period and consider how those changes affected observed distribution response outcomes.  Users may explore analysis outcomes at <https://groomanalyticsllc.shinyapps.io/FIA_Tree_Migration/> and examine data by and across species and compare results under different analysis scenarios.  
+
+
+
+## Methods
+
+Our study relies on  US National Forest Inventory datasets for all forestland in California, Washington, and Oregon, USA. The field data were collected by the FIA which generally defines forestland as an area greater than 4,050 m$^2$ at least 10 percent stocked or potentially stocked with tree species, excluding urban and agricultural land uses (Reams et al. 2005).  The FIA sampling design consists of a spatially balanced  probability sample.  We post-stratified the FIA plots into 25 strata based on different densities of plots and ancillary information (e.g., land classification, ownership).  The standard density of FIA plots is one ground plot every 24 km$^2$.  Plots were initially measured in California and Oregon between 2001 and 2010 while Washington plots were measured between 2002 and 2011.  We only had access to remeasurement data between 2011 and 2019, or nine year-pairs of measurements for California and Oregon and eight for Washington (2012-2019).  Therefore, the general plot intensity for Oregon and California is one plot every 26.7 km$^2$ and one plot every 30 km$^2$ for Washington.  Within the three states there were different plot densification efforts which increased the number of overall strata.  
+
+The total sample size was `r formatC(total.plot.num, big.mark = ",")` plots, of which `r formatC(total.plot.for.num, big.mark = ",")`  were forested and `r formatC(total.plot.miss.num, big.mark = ",")`  could not be measured, either because the landowner denied access or because the plot was unsafe to reach or occupy.  Figure 1 shows the location of all forested plots.  Plots consisted of three points spaced 36.6m from a fourth center point and offset 120˚.   Plots containing forest land were installed and measured by field crews. At each of the 4 points within a plot, trees with stem diameter greater than or equal to 12.7 cm were tallied in a 7.32 m radius circular subplot (total area 672.5 m$^2$).  Crews also measured trees in macroplots (18m radius including the subplot at its center) and microplots (2.1m diameter plots within subplots where seedlings and saplings were measured).  For most species, stem diameter was measured at 1.37 m above the ground. Bechtold and Scott (2005) provide plot design details and measurement protocols.  
+
+### *Data*
+
+The plot and tree data for this analysis were obtained from the Pacific Northwest Forest Inventory and Analysis Database (https://www.fs.fed.us/pnw/rma/fia-topics/inventory-data/).  Specifically, we relied on the TREE, FIADB.PLOT, and FIADB.COND tables.  We imported the data into R 4.0.5 (R Core Team 2021).  The analysis makes use of all FIA plots in the sample regardless of whether they were occupied by target species.  We summarized tree data so that we could tally the number of live trees present for each species during each visit.    
+
+We included tree data only from plots in Oregon, Washington, and California that were visited twice with visits between 9 and 11 years apart (2001-2009 and 2011-2019).  Our analyses differed from the one conducted by Monelon and Lintz (2015) in that we included all individuals with diameters at breast height of greater than 12.7 cm while they examined seedlings (diameters less than 2.54 cm) and mature trees (diameters greater or equal to the 75$^{th}$ percentile of a species’ diameter distribution across the study area).  We also excluded all trees ≥ 18.3m (60 feet) away from plot.  For the range-shift analysis we included macroplot data but excluded trees ≥ 7.3m (24 feet) from plot centers with DBH values > 61.0cm (24 inches) and < 76.2cm (30 inches).  Such trees were excluded because FIA data collection protocols differentially tally these trees in plots depending on the regions in which plots were located (Thompson 2015).   In the density-shift analysis we excluded all macroplot trees to standardize interpretations of tree density.   We removed *Cercocarpus ledifolius*, *Acer glabrum*, *Prunus emarginata*, and eight willow species from the analysis as these species often exhibit a shrub growth form. We also removed all trees that had been erroneously included in earlier surveys (e.g., they were located outside of plots).  We coded *Abies shastensis* as *Abies magnifica* as *A. shastensis* is a hybrid. We removed all plots with trees reported on non-forest land during both plot visits.  
+
+We included only those trees that were alive during both visits, alive and then dead, and those that appeared (DBH > 12.7cm) in the plot on the second visit.  We reviewed all trees that had species name changes between visits to determine which species identification was correct.  In the absence of other information, we selected the species name from the second visit as a species name change requires crew members to intentionally change the species code from the first visit’s default value.  
+
+Some larger-diameter trees appeared during the second visit but were not coded as missed during the previous period.  If the diameter of these trees was greater than 12.7 cm plus the 99th percentile of the amount of growth observed for that species, they were coded as alive during both periods; otherwise, they were coded as ingrowth.   
+
+We then summarized the status of each species within a plot across the two visits.  For the range-shift analysis, a plot containing a species was coded as having the species present during both visits, completely dying out, or appearing as ingrowth within the plot.  If previously alive trees were dead by the second revisit but ingrowth of the same species appeared, the plot was coded as containing the species alive for both visits.  For the density change analysis, the number of live trees for a species was considered during the first and second visit and a plot was labeled as having more, fewer, or the same number of live trees across visits.    
+
+We validated species identifications by comparing occupied plot distributions against species range maps.  Species ranges were checked against the United States Department of Agriculture Natural Resources Conservation Service PLANTS database (<https://plants.usda.gov>, accessed June 2021) and specimen record locations provided by Discover Life (<https://discoverlife.org>, accessed June 2021).  
+
+Our analysis derived plot-level mean annual temperature and precipitation values from a the spatially gridded (800 m) parameter-elevation regressions on independent slopes model (PRISM; Daly et al. 2008).  We used ten yearly values prior to and including the initial plot visit and second plot visit to create slope and intercept time series linear regression models for each vist.  We used the regression models to obtain predicted initial and second visit plot temperature and precipitation values.  The range shift and density shift analyses make use of initial plot visit values.  We assumed that initial visit mean temperature and precipitation values served as valid indices of current conditions.  We also assumed that plots have warmed in an approximately linear and constant fashion across species' ranges, as did Monleon and Lintz (2015).  We did not know how precipitation would change across species' ranges.  We therefore evaluated the change in temperature and precipitation  between initial and second visit values relative to initial visit values to test our assumptions regarding temperature and explore the behavior of precipitation.   
+
+
+
+### *Analysis*  
+
+We followed standard survey sampling procedures (Särndal et al. 1992) from a continuous population perspective (Cordy 1993) to estimate mean annual temperature for a single species.  For the range-shift analysis we computed an approximate design unbiased estimator of the weighted-domain sampling mean annual temperature for the first and second visit (Scott et al. 2005).  The weighted domains reflected the different sampling intensities of the 25 strata (see above).  We estimated the difference in temperature (or precipitation) as the second visit mean minus the first visit mean, calculated as the difference between their respective domain ratio estimators (Wolter 1995).  We employed the same or similar equations as Monleon and Lintz (2015) to obtain estimates of the variance and confidence intervals.  We estimated the mean temperature difference among all species as the average of individual species’ differences, weighted by the inverse of the estimated covariance matrix.  We obtained the variance-covariance matrix through bootstrapping because data for the covariance matrix were sparse and species were not independent (multiple species may be found in any given plot; for details of the statistical analysis see Appendix 1).       
+
+The density-shift analysis made use of the same analysis procedure as described above with the exception that the analysis itself examined the difference in plot temperatures (or precipitation) between plots that had more and fewer individuals by the second plot visit.  This difference again requires a statistic of the difference between two ratios, the weighted domain sampling means of temperatures (or precipitation) for plots that had more and fewer individual trees at the time of the second visit (Appendix 1).   
+
+We evaluated species-level shifts in temperature and precipitation across occupied plots by creating two linear spatial error models (R package spatialreg, Bivand and Piras, 2020; Bivand et al. 2021).  We derived point neighborhoods by using Gabriel graphs and assessed spatial autocorrelation with Moran's I test.  For both models the plot-level changes in temperature or precipitation served as a dependent variable.  The models differed in that one was an intercept-only model while the other also included a slope parameter associated with the first visit temperature or precipitation values.  For each species and metric we used AIC values to select between the two models: the spatial error intercept model was preferred unless the slope model was better supported ($\Delta AIC$ < 3).    
+
+###*Data visualization*  
+
+Our analysis data visualization dashboard (<https://groomanalyticsllc.shinyapps.io/FIA_Tree_Migration/>) enables viewers to compare different analyses, observe maps of species plot distributions, and view different displays of temperature and precipitation value distributions by species.   It additionally includes analysis results that make use of second-visit temperature and precipitation values and variance estimates derived via bootstrap instead of Taylor series approximations.   
+
+
+# Results  
+
+### *Range shift analysis*  
+
+During the first and/or second visit `r nOccSpp`  species occupied `r formatC(total.plots.occ, big.mark = ",")` plots in total with each species occupying at least `r minOccPlots` plots at each visit (Table 1).  Of the `r nOccSpp` species, `r range.shift.gymno` were gymnosperms.  `r n.occ.cooler.all` of the species exhibited negative changes in their range-wide plot temperature means between visits, indicating a distributional range shift towards areas that initially were cooler (Figure 2).  The remaining `r length(occ.results.t$temSE[occ.results.t$temactmean > 0])` species exhibited mean shifts towards initially warmer plots.  `r numbers_to_words(n.occ.cooler + n.occ.warmer, cap = T)` of the species had 95% confidence intervals that did not overlap zero, more strongly suggesting that their ranges may have shifted.  During the second visit `r numbers_to_words(n.occ.warmer)` of those species (*`r occ.warmer.spp`* ) occupied, on average, initially warmer plots, while *`r occ.cooler.spp`*  occupied initially cooler plots.  `r numbers_to_words(n.occ.cooler + n.occ.warmer, cap = T)` significant findings out of `r nrow(occ.results.t)` at α = 0.025 is not unexpected by chance (binomial p = `r p.est.occ.t`).   
+
+For the precipitation range-shift analysis, `r n.occ.drier.all` species exhibited negative between-visit changes in occupied plot precipitation  (i.e., toward initially drier plots). `r numbers_to_words(n.occ.wetter + n.occ.drier, cap = T)` species, (*`r occ.wetter.spp`*), had a 95% confidence interval that did not overlap zero (Figure 2).  This finding, taken alone, suggest that its range shifted towards plots that initially received more annual precipitation (i.e., wetter plots).  `r numbers_to_words(n.occ.wetter + n.occ.drier, cap = T)` significant finding out of `r nrow(occ.results.t)` is not unexpected by chance. 
+
+The temperature and precipitation 95% confidence intervals for the GLS means across species both encompassed zero which indicated that, overall, species did not demonstrate a range shift towards initially cooler or wetter (or warmer or drier) regions.  The GLS confidence interval bands are difficult to see in Figure 2 as they are narrow relative to the spread of the other data.
+
+### *Density change analysis*  
+
+`r nNtreeSpp` species had at least `r minNtreePlots` plots with increases and decreases in species numbers (Table 1).   `r numbers_to_words(dens.shift.gymno, cap = T)` of those species were gymnospersm. The species density change analysis for temperature found that `r length(num.results.t$temSE[num.results.t$temactmean < 0])` out of `r nrow(num.results.t)` species difference in mean density estimates (higher density plot mean minus lower density plot mean) were negative, indicating density shifts towards initially cooler plots and/or away from initially warmer plots (Figure 3).  `r numbers_to_words(n.num.cooler + n.num.warmer, cap = T)` of the species had 95% confidence intervals that did not overlap with zero, suggesting a statistically significant difference at the multiple-comparison unadjusted α = 0.05.  *Pinus contorta* and *Pseudotsuga menziesii* demonstrated a positive significant difference in plot density, indicating a density shift towards initially warmer plots.  `r numbers_to_words(n.num.cooler, cap = T)` species (*`r num.cooler.spp`*) had 95% confidence intervals that were negative (density shift towards cooler plots) and did not include zero.  `r numbers_to_words(n.num.cooler + n.num.warmer, cap = T)` significant findings out of `r nrow(num.results.t)` at α = 0.025 is unexpected by chance (binomial p < 0.001).  Seven of the nine species exhibiting temperature-associated density shifts were gymnosperms.
+
+The precipitation density change analysis found that the plot densities of `r n.num.drier.all` species shifted positively towards initially drier plots (Figure 3).  `r numbers_to_words(n.num.drier, cap = T)` species (*`r num.drier.spp`*) did so with 95% CIs that did not contain zero. `r numbers_to_words(n.num.wetter, cap = T)` species, *`r num.wetter.spp`*, had plot densities shift towards initially wetter plots and a 95% CI that did not contain zero.  This number of significant findings at α = 0.025 is unlikely due to chance (binomial p < 0.001).  Four of the eight species with precipitation-associated density shifts were gymnosperms.
+
+The overall GLS estimates for the mean difference in temperature (and precipitation) between plots that had more and fewer trees was negative in both cases, with confidence intervals that did not include zero (for temperature, mean = `r num.gls.t[2, 1]` °C, 95% CI = `r num.gls.t[1, 1]` °C to `r num.gls.t[3, 1]` °C; for precipitation, mean = `r num.gls.p[2, 1]` °C, 95% CI = `r num.gls.p[1, 1]` °C to `r num.gls.p[3, 1]` °C).   Unlike Figure 2, these GLS confidence interval ranges are visible when plotted (Figure 3).
+
+### *Comparison with Monleon and Lintz (2015)*
+
+We compare changes in species’ range and density relative to initial plot temperatures in Table 2, alongside mean temperature differences between seedling and adult tree distributions (life stage; Monleon and Lintz 2015).  The species range and density findings were both significant and in agreement for *Pseudotsuga menziesii*.   No species had significant findings across all three analyses.  The life stage analysis only had significant findings that were in agreement with the range-shift analysis for *Quercus agrifolia*. The life-stage analysis and density analysis directionally agreed for two species, *Thuja plicata* and *Quercus kelloggii*, and  directionally disagreed for *Abies concolor* and *Calocedrus decurrens*, with tree density shifting towards cooler plots and seedling ranges existing in warmer plots than adults.  
+
+### *Plot changes in precipitation and temperature*
+
+The spatial error models found from intercept-only models that temperature and precipitation on average increased (`r t.int.pos` and `r p.int.pos` statistically significant intercept values [α = 0.025] out of `r nrow(occ.results.t)`, respectively; Table 3).  No intercept-only models for temperature had statistically significant negative intercept estimates. A majority of species' plot precipitation values increased on average although `r p.int.neg` species exhibited significant negative mean values.  `r numbers_to_words(sum(t3[3:4, 3]), cap = T) ` species' precipitation change models were better fit with negative slopes associated with initial plot precipitation values.   We encourage readers to view individual species' plot temperature and precipitation distributions along with geographic plot distributions in the Shiny app.  
+
+### *Additional results*
+
+We did find as many or more significant species results when the analysis made use of second-visit plot temperature or precipitation values or a bootstrap confidence interval instead of the Taylor series expansion approximation for variance.  No species reported above became non-significant under these other scenarios.  Spatial error models for plot changes in temperature based on second-visit plot temperatures exclusively exhibited significant positive slopes.  These results are viewable on the Shiny app.  
+
+
+
+# Discussion  
+
+We did not find strong evidence of species range shifts associated with temperature or precipitation towards previously cooler or wetter (or drier) plots. Shifts towards warmer/cooler or wetter/drier plots were approximately evenly split among species, a finding more firmly established by the GLS confidence intervals (Figure 2).  The results for plot density changes were more definitive: we found for several species that their within-plot densities increased in originally cooler plots and/or decreased in originally warmer plots following a ten-year remeasure period.  We found a similar pattern with precipitation, where some species evidenced densities shifts towards originally drier plots and/or away from originally wetter plots.  The GLS findings for plot densities indicated that, across species, densities were shifting towards previously cooler or drier plots.   
+
+Our study and the study by Monleon and Lintz (2015) are the only ones we are aware of that capitalized on the probabilistic sampling design of the FIA and developed design-based estimates to examine changes in tree distribution relative to temperature or a proxy of temperature (e.g., latitude).  Note that Stankey et al. 2021, who found that relative densities of eight western tree species were declining but did not directly examine the relationship with climate, did make use of design-based estimates from FIA data.
+
+Our spatial error model findings verified a general assumption that temperatures were increasing across our species' plots, and predominantly found that the temperature increases were best modeled as increasing equally across plots regardless of the initial plot temperature value.  We had no initial assumptions regarding how precipitation would change across species' ranges.  It appears that frequently (but not universally) annual precipitation increased across species' plots, and that  annual precipitation often increased most (or decreased least) in initially drier plots and less so in initially wetter plots.   
+
+The interpretations of our results for species' range and density shifts in relation to temperature and precipitation are nuanced.  Our design-based analysis did not allow inclusion of, say, both first-visit plot temperatures and plot temperature change.  When considering initial-visit plot temperatures, the spatial error analysis confirmed that we were generally safe to assume that mean temperature increases were even across all plots (although temperature increases were not the same across species).  Therefore, our analysis interpretation could ignore temperature change as a function of initial plot temperatures.  The same was not true for precipitation.  Some species, on average, experienced a decrease in plot precipitation between the first and second visit although mean precipitation values increased for most species.  Unlike temperature, plot precipitation change was often associated with first-visit plot precipitation values.  A majority of species experience more precipitation increase (or less of a decrease) on average at their initially drier plots.   Thus, a shift in a species' density towards initially drier plots may reflect a density shift to relatively wetter (where "wetter" = increase in precipitation) plots.  This pattern was observed for most "significant" species and may have represented recruitment in portions of species' ranges that would be most affected by increases in precipitation.  *Quercus douglasii* shifted its density towards initially wetter plots and we have no explanation for why this species was an exception.   
+
+The precipitation change analysis results additionally indicate that care must be taken when considering variables across large geographic areas.  In this case it was important to examine the magnitude of precipitation change at a plot level as well as consider initial plot precipitation values.  It is risky assume that changes in environmental variables across a gradient will be positive, negative, even, or linear.  Our precipitation change data, for several species, would likely be better fit with a spline or general additive models.  We believe, for multi-species examinations such as this one, that readers benefit from being able to visualize the data at a species level in order to arrive at their own specific assessments.      
+
+Our findings are roughly consistent with those from other empirically based analyses of species’ responses to climate change in North America.  Tree species’ ranges in eastern North America are not generally shifting (Zhu 2012, Sittaro 2017, Woodall 2018), although the density of species within their ranges may be (Fei et al. 2017, Murphy et al. 2010).  Murphy et al. found that eastern U.S. tree species densities were greatest (“leaning” distributions;  Breshears et al. 2008) towards the northern (i.e., assumed cooler, but see Figure 1A in Fei et al. [2017]) margins.  Fei et al. (2017) found that changes in moisture appeared to be a stronger driver of species' density shifts than temperature, and that angiosperm densities appeared more related to moisture than temperature while gymnosperms were the opposite.  We did have more angiosperms exhibit temperature-associated density shifts than gymnosperms, but with precipitation changes our results were inconsistent with those of Fei et al. as we found equal numbers of angiosperms and gymnosperms exhibiting precipitation-associated density shifts.   
+
+Species range shift models indicate that, given predicted and observed climatic changes, we should expect tree species’ ranges to shift over time (Iverson et al. 2008, Serra-Diaz et al. 2014).  The west coast states of the continental United States have been beset by conditions that generally differed from those in the 20$^{th}$ century and may affect species distributions.  All three states are experiencing increasing frequencies of droughts (Ficklin et al. 2015), wildfires (Westerling et al. 2006), and, for non-coastal mountain ranges, impacts from pests (Hicke et al. 2016).  Hydrologic regimes have shifted in all three states, with longer summer and fall periods of minimal precipitation (Holden et al. 2018), smaller snowpacks, and shorter snowpack durations (Mote et al. 2017).  Temperatures have generally increased in all three states (Westerling et al. 2006, Abatzoglou 2014).  We therefore presume that many of the species we examined are experiencing ecological range-shift pressures.   
+
+There may be several non-exclusive explanations for why we failed to generally detect tree species range shifts.  One explanation is that our analysis lacked statistical power.  We were seeking evidence of range shifts based on revisited plots containing a new species or lacking the species entirely.  We attempted to detect this signal given a revisit period of 10 years.  The revisit time period may have been too short given the range-shift metric we were applying.  Monleon and Lintz (2015) may have detected initial range-shifts by examining seedlings which then failed, within our study's timeframe, to manifest as colonization by trees.  In other words, our species may not be capable of migrating as quickly as ecological niche shifts, rendering our range-shift detection approach ineffective within the 10-year revisit period.      
+
+Tree species movement may be constrained if species ranges abut and intermingle with other tree species ranges.  Zhu (2012), Sittaro et al. (2017), and Woodall et al. (2018) performed range-shift analyses in eastern North America and similarly did not find strong evidence of plot occupancy range shifts of trees.  Liang et al. (2018) modeled the ability of trees to migrate in the same region given existing forest cover and fragmentation.  They found that it was unlikely that species could shift their ranges fast enough to match the velocity of their ecological niche movement as driven by projected climate change.  There are a variety of proximate explanations for slow species range shifts.  It may be difficult for seeds to disperse into previously marginal habitat and germinate under an existing forest canopy, and compete for light against existing seedlings.  
+
+A final explanation is that our range-shift analysis used possibly useful but incomplete metrics.  Monleon and Lintz (2015) established that examining species shifts in west-coast USA states with previous plot temperature averages was likely superior to using elevation or latitude as proxies for climate change.  Our species range-shift examination relied on a similar temperature metric and examined range-shifts relative to a precipitation metric.  It may be that other metrics would better capture actual species range shifts, and these may include different quantifications of temperature and precipitation.  Other metric possibilities include  pathogen and wildfire extent (e.g., using information similar to Hicke et al. 2016) and other species-specific habitat metrics (e.g., land use habitat modification; Lenoir et al. 2010).    
+
+(delete? Expand?) Observing changes in density may represent evidence of tree species responding to climate change.  Tree recruitment may be more successful and mortality lower in areas that have become more hospitable to species recruitment, while the opposite may be true in portions of the range in which conditions are now harsher.  If range shifts are constrained by forces described by Liang et al. (2018), some of the same forces may allow for and promote changes of density within a species’ range.    
+
+Our comparison of findings from our two analyses and the analysis results of Monleon and Lintz (2015) showed broadly similar species responses.  We emphasize that our analysis did not control for multiple comparisons: “Non-significant” species responses do not necessarily imply a lack of response (Type-II error), and “significant” responses may be spurious (Type-I error).  We encourage readers to interpret “significant” individual responses as suggesting that patterns exist.   
+
+We found that *Pinus contorta* and *Pseudotsuga menziesii* both shifted in density towards previously warmer and drier areas.  Both species appeared to experience, on average, elevated precipitation in the previously drier plots, potentially enhancing recruitment relative to previously wetter plots. *P. contorta* is expected to lose habitat in the future as a consequence of climate change (Coops and Waring 2011), although subspecies may respond differently from one another and may potentially be able to undergo range expansion (Oney et al. 2013).  Similarly, Bell and Gray (2016) found that warmer and wetter regions were conducive for positive changes in *P. menziesii* biomass while different factors elsewhere in the species range promoted biomass increases.  Our overall observed occupancy and density changes for these species may be simplistic, and likely represent a culmination of different ecological pressures throughout their ranges (see citations in both Lenoir et al. 2010 and Lenoir and Svenning 2015).  In effect, given our broad geographic sample of plots, our findings for some species (whether we found positive or negative associations with temperature and precipitation) may represent examples of Simpson’s Paradox.    
+
+<P.monticola no longer significant> Lenoir et al. (2010) notes that studies of species range shifts along an elevational gradient frequently find some fraction of species moving downslope or towards warmer latitudes.  They cite evidence for ecological factors at these warmer range limits, due to anthropogenic influences and/or climate change, producing the unexpected result.  As possible examples, the density analysis found that *Pinus monitocola* densities were increasing in warmer plots.  This may be a result of the invasive white pine blister rust (*Cronartium ribicola*).  The disease is least prevalent in the southern portion of its range in Oregon on the eastern side of the Cascade crest, and most prevalent along the crest in moister, cooler regions (Shoal and Aubry 2006).  The disease may therefore be reducing tree abundances in cool, moist regions by increasing tree mortality.    
+
+The density analysis found that plot densities were generally increasing in cooler plots for *Abies concolor* and *Calocedrus decurrens.*  However, Monleon and Lintz (2015) found that the seedlings of these species occupied warmer plots on average than mature trees.  Both of these species are shade tolerant and fire intolerant and are likely to have increased in density as a consequence of recent fire suppression efforts (Minnich et al. 1995, Dolanc et al. 2014), potentially resulting in seedlings appearing in warmer areas.  Conceivably the densities have changed in plots as a consequence of wildfires that occurred since the mid-2000s.    
+
+We anticipate that future FIA plot revisit data sets will enable analyses with greater ability to detect and quantify the change in species ranges.  More time will pass for the environment to change and for species to respond.  Future revisit data will help eliminate our hypothesis that our inconclusive occupancy results may be driven in part by searching too soon for a signal from presence/absence data that are overly coarse.  In the nearer future, we believe more information can be extracted from the current data set.  The revisit plot data enable the estimation of tree recruitment and mortality as well as growth.    
+
+## Conclusion
+
+We interpret our findings alongside those of Monleon and Lintz (2015) as indicating that species within the contiguous west coast states of the US are not generally evidencing profound range shifts in response to climate change, although they do overall appear to be shifting their distributions within their ranges.  There may be several reasons why we did not observe shifts in tree species ranges. However, of critical importance is that the species we examined so far are not demonstrating a capability for range shifting concomitant with the velocity of ecological niche shifts currently driven by climate change.  Given the expected changes in geographical niches, these findings point towards dramatic contractions in species ranges (McKenney et al. 2007).  We hope that this analysis and the associated Shiny app provide relevant introductory information for those interested in exploring range shifts or other responses by these species.  
+
+
+
+\newpage
+
+## Literature Cited
+
+Abatzoglou, J.T., Rupp, D.E. and Mote, P.W., 2014. Seasonal climate variability and change in the Pacific Northwest of the United States. Journal of Climate, 27(5), pp.2125-2142.  
+
+Bechtold, W.A., and C.T. Scott.  2005.  The Forest Inventory and Analysis plot design.  In: The Enhanced Forest Inventory and Analysis Program – National Sampling Design and Estimation Procedures, W.A. Bechtold and Paul L. Patterson, Ed. United States Department of Agriculture Forest Service General Technical Report SRS-80.  
+
+Bell, D.M. and Gray, A.N., 2016. Assessing intra-and inter-regional climate effects on Douglas-fir biomass dynamics in Oregon and Washington, USA. Forest Ecology and Management, 379, pp.281-287.  
+
+Bivand, R., G. Millo, and G. Piras. 2021. “A Review of Software for Spatial Econometrics in R.” Mathematics, 9(11)
+
+Bivand, R.; Piras, G. Spatialreg: Spatial Regression Analysis. 2020. Available online: https://CRAN.R-project.org/package=spatialreg (accessed on 9 August 2022).
+
+Breshears, D.D., Huxman, T.E., Adams, H.D., Zou, C.B. and Davison, J.E., 2008. Vegetation synchronously leans upslope as climate warms. Proceedings of the National Academy of Sciences, 105(33), pp.11591-11592.  
+
+Case, M.J. and Lawler, J.J., 2016. Relative vulnerability to climate change of trees in western North America. Climatic Change, 136(2), pp.367-379.  
+
+Coops, N.C. and Waring, R.H., 2011. A process-based approach to estimate lodgepole pine (Pinus contorta Dougl.) distribution in the Pacific Northwest under climate change. Climatic Change, 105(1), pp.313-328.  
+
+**Cordy, C.B., 1993. An extension of the Horvitz—Thompson theorem to point sampling from a continuous universe. Statistics & Probability Letters, 18(5), pp.353-362.  
+
+Daly, C., M. Halbleib, J.I. Smith, W.P. Gibson, M.K. Doggett, G.H. Taylor, J. Curtis, and P.P. Pasteris. 2008. Physiographically sensitive mapping of climatological temperature and precipitation across the conterminous United States. International Journal of Climatology: a Journal of the Royal Meteorological Society, 28(15), pp.2031-2064.  
+
+Dolanc, C.R., Safford, H.D., Dobrowski, S.Z. and Thorne, J.H., 2014. Twentieth century shifts in abundance and composition of vegetation types of the S ierra N evada, CA, US. Applied Vegetation Science, 17(3), pp.442-455.  
+
+Fei, S., Desprez, J.M., Potter, K.M., Jo, I., Knott, J.A. and Oswalt, C.M., 2017. Divergence of species responses to climate change. Science Advances, 3(5), p.e1603055.  
+
+Hicke, J.A., Meddens, A.J. and Kolden, C.A., 2016. Recent tree mortality in the western United States from bark beetles and forest fires. Forest Science, 62(2), pp.141-153.  
+
+Holden, Z.A., Swanson, A., Luce, C.H., Jolly, W.M., Maneta, M., Oyler, J.W., Warren, D.A., Parsons, R. and Affleck, D., 2018. Decreasing fire season precipitation increased recent western US forest wildfire activity. Proceedings of the National Academy of Sciences, 115(36), pp.E8349-E8357.  
+
+Iverson LR, Prasad AM, Matthews SN, Peters M (2008) Estimating potential habitat for 134 eastern US tree species under six climate scenarios. Forest Ecology and Management, 254, 390–406.  
+
+Jolly, W.M., Cochrane, M.A., Freeborn, P.H., Holden, Z.A., Brown, T.J., Williamson, G.J. and Bowman, D.M., 2015. Climate-induced variations in global wildfire danger from 1979 to 2013. Nature communications, 6(1), pp.1-11.  
+
+Kelly, A.E. and Goulden, M.L., 2008. Rapid shifts in plant distribution with recent climate change. Proceedings of the National Academy of Sciences, 105(33), pp.11823-11826.  
+
+Lenoir, J., Gégout, J.C., Guisan, A., Vittoz, P., Wohlgemuth, T., Zimmermann, N.E., Dullinger, S., Pauli, H., Willner, W. and Svenning, J.C., 2010. Going against the flow: potential mechanisms for unexpected downslope range shifts in a warming climate. Ecography, 33(2), pp.295-303.  
+
+Lenoir, J. and Svenning, J.C., 2015. Climate-related range shifts–a global multidimensional synthesis and new research directions. Ecography, 38(1), pp.15-28.  
+
+Liang, Y., Duveneck, M.J., Gustafson, E.J., Serra-Diaz, J.M. and Thompson, J.R., 2018. How disturbance, competition, and dispersal interact to prevent tree range boundaries from keeping pace with climate change. Global Change Biology, 24(1), pp.e335-e351.  
+
+Loarie, S.R., Duffy, P.B., Hamilton, H., Asner, G.P., Field, C.B. and Ackerly, D.D., 2009. The velocity of climate change. Nature, 462(7276), pp.1052-1055.  
+
+McKenney DW, Pedlar JH, Lawrence K, Campbell K, Hutchinson MF (2007) Potential impacts of climate change on the distribution of North American trees. BioScience, 57, 939–948.F22  
+
+Minnich, R.A., Barbour, M.G., Burk, J.H. and Fernau, R.F., 1995. Sixty years of change in Californian conifer forests of the San Bernardino Mountains. Conservation Biology, 9(4), pp.902-914.  
+
+Monleon, V.J., and H.E. Lintz.  2015.  Evidence of tree species’ range shifts in a complex landscape.  PLoS One, 10(1), p.e0118069.  
+
+Mote, P.W., Li, S., Lettenmaier, D.P., Xiao, M. and Engel, R., 2018. Dramatic declines in snowpack in the western US. Climate and Atmospheric Science, 1(1), pp.1-6.
+
+Mottl, O., Flantua, S.G., Bhatta, K.P., Felde, V.A., Giesecke, T., Goring, S., Grimm, E.C., Haberle, S., Hooghiemstra, H., Ivory, S. and Kuneš, P., 2021. Global acceleration in rates of vegetation change over the past 18,000 years. Science, 372(6544), pp.860-864.  
+
+Murphy, H.T., VanDerWal, J. and Lovett-Doust, J., 2010. Signatures of range expansion and erosion in eastern North American trees. Ecology Letters, 13(10), pp.1233-1244.  
+
+Oney, B., Reineking, B., O'Neill, G. and Kreyling, J., 2013. Intraspecific variation buffers projected climate change impacts on Pinus contorta. Ecology and evolution, 3(2), pp.437-449.  
+
+R Core Team. 2021.  R: A Language and Environment for Statistical Computing.  R Foundation for Statistical Computing. Vienna, Austria.  https://www.R-project.org  
+
+Reams, G.A, W.D. Smith, M.H. Hansen, W. A. Bechtold, F.A. Roesch, and G.G. Moisen. The forest inventory and analysis sampling frame. In: The Enhanced Forest Inventory and Analysis Program – National Sampling Design and Estimation Procedures, W.A. Bechtold and Paul L. Patterson, Ed. United States Department of Agriculture Forest Service General Technical Report SRS-80.  
+
+Särndal CE, Swensson B, Wretman J (1992) Model Assisted Survey Sampling. New York: Springer-Verlag. 694 p.  
+
+Scott, C.T., W. A. Bechtold, G.A. Reams, W.D. Smith, J.A. Westfall, M.H. Hansen, and G.G. Moisen.  Sample-based estimators used by the Forest Inventory and Analysis National Information Management System. In: The Enhanced Forest Inventory and Analysis Program – National Sampling Design and Estimation Procedures, W.A. Bechtold and Paul L. Patterson, Ed. United States Department of Agriculture Forest Service General Technical Report SRS-80.  
+
+Serra‐Diaz, J.M., Franklin, J., Ninyerola, M., Davis, F.W., Syphard, A.D., Regan, H.M. and Ikegami, M., 2014. Bioclimatic velocity: the pace of species exposure to climate change. Diversity and Distributions, 20(2), pp.169-180.  
+
+Shoal, R., and C. Aubry.  2006.  Assessment of whitebark pine health on eight national forests in Oregon and Washington.  USDA Forest Service Pacific Northwest Region (R6) Oregon and Washington.    
+
+Sittaro, F., Paquette, A., Messier, C. and Nock, C.A., 2017. Tree range expansion in eastern North America fails to keep pace with climate warming at northern range limits. Global Change Biology, 23(8), pp.3292-3301.  
+
+Stanke, H., Finley, A.O., Domke, G.M., Weed, A.S. and MacFarlane, D.W., 2021. Over half of western United States' most abundant tree species in decline. Nature Communications, 12(1), pp.1-11.  
+
+Thompson, J. 2015.  PNW-FIADB Users Manual: A data dictionary and user guide for the PNW-FIADB database.  Forest Inventory and Analysis, Pacific Northwest Research Station, Portland, Oregon.  
+
+Weed, A.S., Ayres, M.P. and Hicke, J.A., 2013. Consequences of climate change for biotic disturbances in North American forests. Ecological Monographs, 83(4), pp.441-470.  
+
+Westerling, A.L., Hidalgo, H.G., Cayan, D.R. and Swetnam, T.W., 2006. Warming and earlier spring increase western US forest wildfire activity. science, 313(5789), pp.940-943.  
+
+Wolter, K.M.  1985.  Introduction to Variance Estimation. New York: Springer-Verlag. 427 p.  
+
+Woodall, C.W., Westfall, J.A., D'Amato, A.W., Foster, J.R. and Walters, B.F., 2018. Decadal changes in tree range stability across forests of the eastern US. Forest Ecology and Management, 429, pp.503-510.
+  
+Woodall, C.W., Zhu, K., Westfall, J.A., Oswalt, C.M., D’amato, A.W., Walters, B.F. and Lintz, H.E., 2013. Assessing the stability of tree ranges and influence of disturbance in eastern US forests. Forest Ecology and Management, 291, pp.172-180.  
+
+Zhu, K., Woodall, C.W. and Clark, J.S., 2012. Failure to migrate: lack of tree range expansion in response to climate change. Global Change Biology, 18(3), pp.1042-1052.  
+
+Zhu, K., Woodall, C.W., Ghosh, S., Gelfand, A.E. and Clark, J.S., 2014. Dual impacts of climate change: forest migration and turnover through life history. Global change biology, 20(1), pp.251-264.  
+
+
+
+
+\newpage
+
+## Figure Legends
+Figure 1. Distribution of `r total.plot.for.num` forested FIA plots in the states of Oregon, Washington, and California.
+
+Figure 2.  Estimated mean range temperature and precipitation differences between plot measurements for `r nrow(t1)` species.  For temperature and precipitation, mean changes greater than zero indicated that the species’ range was on average warmer or wetter, respectively, during the second visit.  The two plots include a vertical band representing the 95% GLS confidence interval for estimates of overall temperature or precipitation change among species.  
+
+Figure 3. Estimated mean temperature and precipitation differences between plots with more and fewer living trees upon the second visit for `r nrow(num.results.t)` species.  Mean changes greater than zero indicated that more trees for a species were found in warmer/wetter plots (and/or fewer trees were found in cooler/drier plots), on average.  Both plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in plot temperature or precipitation between plots with more and fewer trees.  
+
+
+\newpage
+
+```{r fig.map, fig.height = 8}
+
+# The forested points distribution map was created as a QGIS project.  I attempted to create a version using R
+#  but wasn't pleased with it.  The R version will truly display all current points, if that is desired.  The code
+#  looks first for the PNG from the QGIS project ("PointDist.png").  If that is missing it next looks for the R PNG file
+#  ("ForestedPts_Fig.png").  If that is missing too, it recreates the figure, saves it, and calls for it.
+
+if (file.exists(paste0(ms.file.loc, "PointDist.png"))) {  # First looking for QGIS map
+  include_graphics(paste0(ms.file.loc, "PointDist.png"))
+  
+} else if (file.exists(paste0(ms.file.loc, "ForestedPts_Fig.png"))) {  # Now looking for the R-created map
+  include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
+  
+} else {   # Now it makes the R map.
+  # Finding all forested plots and defining and saving lat/lon.
+  total.plots2 <- total.plots %>% mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
+    filter(propfor > 0) %>% 
+    dplyr::select(State_Plot)
+                                         
+  for.pts <- left_join(total.plots2, TC1.2., by = "State_Plot") %>% 
+    dplyr::select(State_Plot, LAT, LON) %>%
+    distinct()
+  
+  for.pts <- for.pts[is.na(for.pts$LAT) == FALSE,]
+  
+  write_csv(for.pts, paste0(data.file.loc, "ForestedPts.csv")) 
+  
+  # Grabbing a layer of just the west-coast states.
+  states <- sf::st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
+  states2 <- states %>% mutate(west = ifelse(ID == "california" | ID == "washington" | ID == "oregon", 1, 0))
+  
+  # North America
+  worldmap <- ne_countries(scale = 'medium', type = 'map_units',
+                           returnclass = 'sf')
+  NorAm <- worldmap[worldmap$continent == "North America",]
+  NorAm2 <- sf::st_crop(NorAm, xmin = -180, xmax = 0, ymin = 0, ymax = 90)
+  
+
+  projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+  
+  # Box for inset map. Box goes around the west coast states
+  box_df = data.frame(lon = c(-126, -113), lat = c(32, 49.5))
+  
+  state.box <- box_df %>% 
+    sf::st_as_sf(coords = c("lon", "lat"), 
+                 crs = projcrs) %>% 
+    sf::st_bbox() %>% 
+    sf::st_as_sfc()
+  
+  # Main map of point distribution across states.
+  pts.map <- ggplot() + 
+    geom_sf(data = states[states$ID == "california" | states$ID == "oregon" | states$ID == "washington", ], fill = "white", size = 1) + 
+    geom_point(data = for.pts, mapping = aes(x = LON, y = LAT), alpha = 0.25) +
+    # coord_sf(xlim = c(-126, -113), ylim = c(32, 49.5), expand = FALSE) +
+    theme_void() + 
+    annotation_scale(style = "ticks") + 
+    ggspatial::annotation_north_arrow(
+      location = "bl", which_north = "true",
+      pad_x = unit(0.4, "in"), pad_y = unit(0.4, "in"),
+      style = ggspatial::north_arrow_nautical(
+        fill = c("grey40", "white"),
+        line_col = "grey20"
+      )
+    ) 
+  
+  
+  # Inset map
+  state.map <- ggplot() + 
+    geom_sf(data = NorAm, fill = "white") +
+    geom_sf(data = states2, aes(fill = factor(west)))  +
+    geom_sf(data = state.box, fill = NA, size = 1) +
+    coord_sf(xlim = c(-135, -55), ylim = c(15, 65), expand = TRUE) +
+    scale_discrete_manual(aesthetics = "fill", values = c("white", "grey")) +
+    theme_void() + 
+    theme(legend.position = "none",
+          panel.background = element_rect(colour = "black", size = 1))
+  
+  # Create PNG file
+  png(paste0(ms.file.loc, "ForestedPts_Fig.png"), width = 5, height = 7, units = "in", res = 300)
+  ggdraw(pts.map) +  # cowplot used here for creating inset map.
+    draw_plot(state.map,
+              x = 0.56, y = 0.27,
+              width = 0.3, height = 0.4)      
+  dev.off()
+  
+  include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
+  
+}
+```
+  
+  
+Figure 1. Distribution of `r total.plot.for.num` forested FIA plots in the states of Washington, Oregon, and California, USA.
+
+
+\newpage
+
+```{r RangeShift1}
+if (file.exists(paste0(ms.file.loc, "RangeShift_Fig.png"))) {
+    include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
+} else {
+
+      # See dataprep function in functions.r
+      r1 <- fia.dataprep.fcn("occ.", "t", "1", "e") %>% arrange(desc(response)) %>% 
+        mutate(SciName2 = paste0("*", SciName, "*"))
+      
+      r1.order <- r1 %>% select(Spp.symbol) %>%
+        mutate(order = seq(1:n()))
+      
+      r2 <- fia.dataprep.fcn("occ.", "p", "1", "e") %>%
+        left_join(r1.order, by = "Spp.symbol") %>%
+        arrange(order)
+      
+      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "t", "1"))]]
+      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "p", "1"))]]
+
+      plt1.title <- "Range Shift, Temperature"
+      plt2.title <- "Range Shift, Precipitation"
+        plt1.x.ax <- "Difference in temperature (\u00B0C)"
+        plt2.x.ax <- "Difference in precipitation (mm)" 
+      # Calling on plotting functions from functions.r
+
+        source("ShinyCode/functions.r")
+
+      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 12) 
+      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 12)#1)
+      
+      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
+      ##  Change y-axis of p1 to null
+      q1 <- as.grob(q1)
+      p1 <- as.grob(p1)
+      
+      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
+
+  png(paste0(ms.file.loc, "RangeShift_Fig.png"), width = 7, height = 9, units = "in", res = 300)
+  p_all      
+  dev.off()
+  
+  include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
+  
+}
+```
+
+
+Figure 2.  Estimated mean and bootstrap mean of temperature differences between visits for `r nrow(t1)` species.  Mean changes greater than zero indicated that the species’ range was on average warmer during the second visit.  Both plots include a vertical grey band representing the 95% GLS confidence interval for estimates of overall temperature change among species.  
+
+\newpage
+
+```{r DensShift1}
+if (file.exists(paste0(ms.file.loc, "DensityShift_Fig.png"))) {
+    include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
+} else {
+
+      # See dataprep function in functions.r
+      r1 <- fia.dataprep.fcn("num.", "t", "1", "e") %>% arrange(desc(response)) %>% 
+        mutate(SciName2 = paste0("*", SciName, "*"))
+      
+      r1.order <- r1 %>% select(Spp.symbol) %>%
+        mutate(order = seq(1:n()))
+      
+      r2 <- fia.dataprep.fcn("num.", "p", "1", "e") %>%
+        left_join(r1.order, by = "Spp.symbol") %>%
+        arrange(order)
+      
+      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "t", "1"))]]
+      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "p", "1"))]]
+
+      plt1.title <- "Density Shift, Temperature"
+      plt2.title <- "Density Shift, Precipitation"
+        plt1.x.ax <- "Difference in temperature (\u00B0C)"
+        plt2.x.ax <- "Difference in precipitation (mm)" 
+      # Calling on plotting functions from functions.r
+
+      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 11) 
+      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 11)#1)
+      
+      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
+      ##  Change y-axis of p1 to null
+      q1 <- as.grob(q1)
+      p1 <- as.grob(p1)
+      
+      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
+
+  png(paste0(ms.file.loc, "DensityShift_Fig.png"), width = 7, height = 8, units = "in", res = 300)
+  p_all      
+  dev.off()
+  
+  include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
+  
+}
+```
+  
+Figure 3. Estimated mean, 95$^{th}$ percentile, and 5$^{th}$ percentile temperature differences between plots with more and fewer living trees upon the second visit for `r nrow(num.results.t)` species.  Mean changes greater than zero indicated that more trees for a species were found in warmer plots, on average.  All three plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in plot temperature between plots with more and fewer trees.  
+
+
+
+
+
+
+
+
+\newpage
+Table 1.  Species included in the analysis.  Bold font indicates that a given species’ entire range lay within the study area.  Number of Plots quantifies the number of FIA plots occupied by a species during the First and Second visit, and the number of plots where species were Lost (present during the first but absent the second visit) or, vice versa, Gained.  The numbers of plots where Fewer and More trees were detected during the second visit are also provided, but only for species with more than fifty plots in each category.
+```{r Table_plots}
+kable(t1)
+
+```
+Note: Native species not reported above because, for the occupancy analysis, they occupied fewer than 50 plots: *`r not.used.spp.vec1`*, and *`r not.used.spp.vec2`*.
+
+\newpage
+Table 2.  Comparison of analysis findings between the range shift (Range), density shift (Density), and life stage (Life Stage) findings.  Life stage findings are from Monleon and Lintz 2015. Species with changes towards warmer and cooler plots are noted as "Warm" and "Cool".  Bold font indicates that confidence intervals did not include zero.  Tree classification as angiosperm or gymnosperm are provided in the column Type as "Angio" and "Gymno".  
+```{r Table_plots2}
+kable(t2)
+
+```
+
+\newpage
+Table 3. Summary of spatial simultaneous autoregressive error model estimation of changes in plot temperature and precipitation across species' ranges between the first and second visits (see text). The column "Metric" is the mean positive or negative change in either temperature (+/-$\Delta$T) or precipitation(+/-$\Delta$P).  Int is the number of significant (p < 0.025) intercept estimates for an intercept-only model.  "Slope +/-" is the number of species which were better described with a slope model with positive or negative slope parameter estimates, with the initial visit plot temperature/precipitation value serving as the model's independent variable.   
+
+```{r Table_plots3}
+kable(t3)
+
+```
+
+
+
+

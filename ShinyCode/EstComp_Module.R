@@ -82,7 +82,7 @@ EstComp_Server <- function(id) {
       # See dataprep function in functions.r
       r1 <- fia.dataprep.fcn(o.n.sel, p.t.sel1, t.sel1, e.bs.sel1) %>% arrange(desc(response))
       
-      r1.order <- r1 %>% select(Spp.symbol) %>%
+      r1.order <- r1 %>% dplyr::select(Spp.symbol) %>%
         mutate(order = seq(1:n()))
       
       r2 <- fia.dataprep.fcn(o.n.sel, p.t.sel2, t.sel2, e.bs.sel2) %>%
@@ -108,8 +108,8 @@ EstComp_Server <- function(id) {
       plt2.x.ax <- plt.x.ax[as.numeric(input$metric2)]      
       
       # Calling on plotting functions from functions.r
-      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1)# r1$SciName2, NULL, 1 )#
-      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0)#1)
+      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 15)# r1$SciName2, NULL, 1 )#
+      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 15)#1)
       
       # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
       ##  Change y-axis of p1 to null

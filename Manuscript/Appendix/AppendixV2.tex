@@ -1,0 +1,170 @@
+\documentclass[12pt]{article}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\doublespacing
+%\renewcommand{\baselinestretch}{1.5}
+%\usepackage{kbordermatrix}
+%\usepackage{tikz}
+\usepackage[margin=1 in]{geometry}
+\usepackage{kbordermatrix}
+\usepackage{tikz}
+\makeatletter
+\renewcommand\@biblabel[1]{}
+\makeatother
+\begin{document}
+\pagestyle{plain}
+
+\section*{S1 Appendix.  Details of the statistical analysis}
+
+The original equation for an approximate design unbiased estimator of the mean temperature ($\hat{\mu}_{kd}$) for the range of seedlings or mature trees ($d$) of species $k$ from Monleon and Lintz (2015) is given by the weighted domain sample mean:
+
+\begin{equation}
+\hat{\mu}_{kd} = \frac{1}{|\hat{D}_{kd}|}\displaystyle\sum_{i=1}^{n} I_{kd}(p_i)y(p_i)/\pi(p_i)  
+\end{equation} 
+
+\begin{equation}
+|\hat{D}_{kd}| = \displaystyle\sum_{i=1}^{n} I_{kd}(p_i)/\pi(p_i)  
+\end{equation} 
+
+where $I_{kd}(p_i)$ is an indicator variable that takes the value of 1 if the \emph{i}-th plot contains seedlings or mature trees of the \emph{k}-th species or 0 if otherwise; $y(p_i)$ is the $i$-th plot value for temperature and $\pi(p_i)$ is the inclusion density function in the \emph{i}-th plot, respectively; $|\hat{D}_{kd}|$ is an estimator of the size of the domain (range of seedlings or mature trees).
+
+The equations in this appendix apply to both the species range analysis and the species density analysis.  In this study $y(p_i)$ is the $i$-th plot value for temperature or precipitation ($y$) and $d$ indexes one of two conditions being compared, \emph{P} and \emph{Q}.  For the species range analysis $P$ and $Q$ represent plots occupied at the first visit and second visit respectively.  For the species density analysis $P$ and $Q$  represent plots with fewer or more trees at the second visit.  $I_{kd}(p_i)$ is an indicator variable that takes the value of 1 if the \emph{i}-th plot meets condition $P$ or $Q$ and 0 if otherwise; $|\hat{D}_{kd}|$ is an estimator of the domain size (number of plots that meet condition $P$ or $Q$).
+
+In this analysis we conduct post stratification.  We divided the study region into 25 strata which have different sampling intensities.  Because we are using stratified sampling, and inclusion probabilities are the same within strata for $\hat{\mu}_{kd}$ and $|\hat{D}_{kd}|$, we redefine equations 1 and 2 for specific strata as: 
+
+\begin{equation}
+\hat{Y}_{kdh} = \displaystyle\sum_{i=1}^{n_h} I_{kdh}(p_i)y(p_i)  
+\end{equation} 
+
+\begin{equation}
+|\hat{D}_{kdh}| = \displaystyle\sum_{i=1}^{n_h} I_{kdh}(p_i)
+\end{equation} 
+
+where there are $n_h$ plots in stratum $h$, with an overall total of $n$ plots.  The stratified means are defined (after equation 4.13 in Scott et al., 2005) as: 
+
+ \begin{equation} \label{eq:hatY}
+\hat{Y}_{kd} = \displaystyle\sum_{i=h}^{H} W_h \hat{Y}_{kdh}
+\end{equation} 
+
+\begin{equation}  \label{eq:hatD}
+|\hat{D}_{kd}| = \displaystyle\sum_{i=h}^{H} W_h |\hat{D}_{kdh}|
+\end{equation} 
+
+where \emph{H} is the total number of strata and $W_h$ is the area weight for the stratum. The area weight is not based on plot number, but rather on a predefined fraction of stratum area relative to the whole.  The variance for $\hat{Y}_{kd}$ and $|\hat{D}_{kd}|$ can be given by the equation for an arbitrary estimated mean $\hat{G}$ (after equation 4.12 in Scott et al., 2005) as:
+
+\begin{equation}
+\rho(\hat{G}) = \frac{\displaystyle\sum_{i=1}^{n_h}y^2_{hi} - n_h\hat{G}^2}{n_h(n_h - 1)}
+\end{equation}
+
+
+
+We are interested in the difference in the ratio of trees of species \emph{k} divided by their encounter probability $|\hat{D}_{kd}|$ for condition $Q$ minus the same ratio for condition $P$.  We obtain the ratio for condition $P$ or $Q$ using equations 5 and 6 which are based on equation 4.16 from Scott et al. (2005):
+
+
+ \begin{equation}  \label{eq:hatMu}
+\hat{\mu}_{kd} = \frac{\hat{Y}_{kd}}{|\hat{D}_{kd}|} = \frac{\displaystyle\sum_{i=h}^{H} W_h \hat{Y}_{kdh}}{ \displaystyle\sum_{i=h}^{H} W_h |\hat{D}_{kdh}|}
+\end{equation}
+ 
+The variance for $\hat{\mu}_{kd}$ from equation 4.17 in Scott et al. (2005) is:
+
+
+ \begin{equation}
+\hat{V}(\hat{\mu}_{kd}) \approx \frac{1}{{|\hat{D}_{kd}|}^2} \Big[ \hat{\nu}(\hat{Y}_{kd}) + {\hat{\mu}_{kd}}^2 \hat{\nu} \big( |\hat{D}_{kd}| \big) - 
+2\hat{\mu}_{kd}\hat{c}\big(\hat{Y}_{kd},  |\hat{D}_{kd}| \big) \Big]
+\end{equation}
+
+where $\hat{\nu}(\cdot)$ and $\hat{c}(\cdot, \cdot)$ are the estimated variance and covariance functions, respectively.  For arbitrary estimators $\hat{x}$ and $\hat{z}$, they are, from equations 4.14 and 4.18 in Scott et al. (2005):
+
+ \begin{equation} \label{eq:bigvar}
+\hat{\nu}\big( \hat{x} \big) = \frac{1}{n} \Big[ \displaystyle\sum_{i=h}^{H} W_h n_h\rho\big(\overline{x_{h}}\big) +  
+\displaystyle\sum_{i=h}^{H} \big(1 - W_h) \frac{ n_h}{n}\rho\big(\overline{x_h}\big)    \Big]
+\end{equation}
+
+ \begin{equation} \label{eq:bigcov}
+\hat{c}\big(\hat{x}, \hat{z}\big) = \frac{1}{n} \Big[ \displaystyle\sum_{i=h}^{H} W_h n_h cov\big(\overline{x_h}, \overline{z_h}\big) +  
+\displaystyle\sum_{i=h}^{H} \big(1 - W_h) \frac{ n_h}{n}cov\big(\overline{x_h}, \overline{z_h}\big)    \Big]
+\end{equation}
+
+where, from equation 4.19 in Scott et al. (2005):
+
+\begin{equation}
+cov\big(\overline{x_h}, \overline{z_h}\big) = \frac{\displaystyle\sum_{i=1}^{n_h}x_{ih}z_{ih}-n_h\overline{x_h} ~ \overline{z_{h}}}{n_h\big(n_h-1\big)}
+\end{equation}
+
+The latter portions of (\ref{eq:bigvar}) and (\ref{eq:bigcov}) are inconsequential, so (\ref{eq:bigvar}) and (\ref{eq:bigcov}) simplify to: 
+
+ \begin{equation} \label{eq:bigvar_trunc}
+\hat{\nu}\big( \hat{x} \big) = \frac{1}{n} \Big[ \displaystyle\sum_{i=h}^{H} W_h n_h\rho\big(\hat{x}_{h}\big)   \Big]
+\end{equation}
+
+and
+
+ \begin{equation} \label{eq:bigcov_trunc}
+\hat{c}\big(\hat{x}, \hat{z}\big) = \frac{1}{n} \Big[ \displaystyle\sum_{i=h}^{H} W_h n_h cov\big(\overline{x_h}, \overline{z_h}\big)    \Big] 
+\end{equation}
+
+For each species we estimated the difference in the mean annual temperature or precipitation for conditions $P$ and $Q$ as the difference between their respective domain ratio estimators:
+
+ \begin{equation} \label{eq:delta}
+\hat{\delta_k} = \hat\mu_{kQ} - \hat\mu_{kP}
+\end{equation}
+
+The approximate variance of $\hat{\delta_k}$, using a Taylor series approximation (equation 6.9.1 in Wolter 1995), is: 
+
+ \begin{equation} \label{eq:grandvar}
+\hat{V}\big(\hat{\delta_k}\big) \approx \hat{V}\big(\hat\mu_{kQ}\big) + \hat{V}\big(\hat\mu_{kP}\big) - \frac{2}{|\hat{D}_{kP}||\hat{D}_{kQ}|} 
+\begin{bmatrix}  \hat{c}\big( \hat{Y}_{kP}, \hat{Y}_{kQ} \big) + \hat{\mu}_{kP}\hat{\mu}_{kQ}\hat{c}\big( |\hat{D}_{kP}|, |\hat{D}_{kQ}| \big) \\ - \hat{\mu}_{kP}\hat{c}\big( \hat{Y}_{kQ}, |\hat{D}_{kP}| \big)  - \hat{\mu}_{kQ}\hat{c}\big( \hat{Y}_{kP}, |\hat{D}_{kQ}| \big)  \Big]
+\end{bmatrix}
+\end{equation}
+
+We estimated a 95\% confidence interval as:
+
+\begin{equation} \label{eq:ci}
+\hat{\delta_k} \pm z_{0.975} \Big[\hat{V}\Big(\hat{\delta_k} \Big)\Big]^{1/2}
+\end{equation}
+
+where $z_{0.975}$ is the 97.5 percentile of the normal distribution.  
+
+We obtained 95\% confidence intervals using the percentile bootstrap method (Shao and Tu 1995).   We sampled all plots with replacement to create a sample of the same size.  We repeated the process 20,000 times to obtain bootstrap confidence intervals for the mean estimates. 
+
+\section*{Estimation of mean differences across all species} 
+The estimated variances for individual species differed widely.  Since estimators were calculated from the same sample and because tree distributions are non-random, the estimators are expected to be correlated.  To estimate a mean difference across all species we dealt with the unequal and non-independent variances by using a generalized least-squares estimator:
+
+ \begin{equation} \label{eq:gls}
+\hat{\Delta} = \big(\mathbf{c^T\Sigma^{-1}c\big)^{-1}c^T\Sigma^{-1}}\hat{\boldsymbol{\delta}}
+\end{equation}
+
+where $\hat{\boldsymbol{\delta}}$ is a vector of the individual species differences, $\hat{\delta}_k$, $\bold{c}$ is a vector of 1s of the same length as $\hat{\boldsymbol{\delta}}$, and $\mathbf{\Sigma}$ is the variance-covariance matrix of $\boldsymbol{\delta}$.  The variance estimator is: 
+
+ \begin{equation} \label{eq:glsV}
+V\big(\hat{\Delta}\big) = \big(\mathbf{c^T\Sigma^{-1}c\big)^{-1}}
+\end{equation}
+
+We estimated the variance-covariance matrix $\mathbf{\Sigma}$ by using output from the bootstrap procedure described above.  We computed $\boldsymbol{\delta}$ of between-condition differences ($Q - P$) and used the resulting matrices of all iteration outputs to obtain $\mathbf{\Sigma}$ for the mean estimate. 
+
+\begin{thebibliography}{2}
+
+
+
+\bibitem{fuller2009} Fuller, W.A.  2009.  Sampling Statistics. Hoboken: Wiley. 454 p.
+
+\bibitem{monleon2015} Monleon, V.J., and H.E. Lintz.  2015. Evidence of tree species’ range shifts in a complex landscape. PLoS One, 10(1), p.e0118069.
+
+\bibitem{sarndal1992} S{\"a}rndal, C.-E., B. Swensson, and J. Wretman.  2012.  Model assisted survey sampling.  New York: Springer-Verlag Publishing.
+
+\bibitem{Bechtold2005} Scott, C.T., W.A. Bechtold, G.A. Reams, W.D. Smith, J.A. Westfall, M.H. Hansen, and G.G. Moisen.  2005.  Chapter 4: Sample-based estimators used by the Forest Inventory and Analysis National Information Management System.  \emph{In:} Bechtold, W. A. and P.L. Patterson, Editors, The enhanced Forest Inventory and Analysis program—national sampling design and estimation procedures. Gen. Tech. Rep. SRS-80. Asheville, NC: U.S. Department of Agriculture, Forest Service, Southern Research Station. 85 p.
+
+\bibitem{shao1995} Shao, J., Tu D. 1995 The Jackknife and Bootstrap. New York: Springer-Verlag. 517 p.
+
+\end{thebibliography}
+
+
+
+\end{document}

@@ -126,6 +126,8 @@ summary_A1 <- Analysis1.2 %>% filter(SPCD %in% ordered.spp$SppCode) %>% select(S
             pct_less = n_1/sum(n_1, n_2, n_3),
             total = sum(n_1, n_2, n_3))
 
+   # The "summary_A1" info is saved for Table1 in the manuscript
+#write_csv(summary_A1 %>% dplyr::select(SPCD, n_1, n_3), paste0(LOC, "Total.Num.GT.LT.csv"))
 
 spp_A1 <- summary_A1 %>% filter(n_1 > 50 & n_3 > 50) %>% select(SPCD)  # Species with > 50 plots with num.code = 1 , > 50 plots with num.code = 3 (NOT INCLUDING num.code 2)
 ordered.spp <- ordered.spp[ordered.spp$spp.codes %in% spp_A1$SPCD,]

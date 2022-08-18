@@ -1,0 +1,5 @@
+Metric,Intercept,Slope +,Slope -
++$\Delta$T,40,5,3
+-$\Delta$T,0,0,0
++$\Delta$P,32,2,16
+-$\Delta$P,7,0,9

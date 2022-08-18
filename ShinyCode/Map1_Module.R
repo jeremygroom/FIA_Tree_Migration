@@ -49,7 +49,7 @@ Map1_UI <- function(id) {
                                                     "Occupancy" = 1,
                                                     "Change in density" = 2))
                    ),
-                   column(width = 6, radioButtons(NS(id, "ci"), label = h4("Show Loess Smoother CI?"),
+                   column(width = 6, radioButtons(NS(id, "line"), label = h4("Show spatial linear regression line?"),
                                                   choices = list(
                                                     "Yes" = 1,
                                                     "No" = 2))
@@ -74,13 +74,13 @@ Map1_Server <- function(id) {
     
     
     # Want to turn off change in density (tree number) option if that analysis was not conducted for a species.
-       # First the occupancy option is selected.
+    # First the occupancy option is selected.
     observe({    
       if (as.numeric(input$sppname) %in% spp.absent.gt$id) {
         updateRadioButtons(session, inputId = "occ_num", selected = 1)
       }
     })
-       # Then the radio button is deactivated (grayed out). 
+    # Then the radio button is deactivated (grayed out). 
     observe({  
       toggleState("occ_num", condition = (as.numeric(input$sppname) %in% spp.absent.gt$id == FALSE))
     })     
@@ -89,7 +89,7 @@ Map1_Server <- function(id) {
     ## This reactive gathers together all data used.
     map.data <- reactive({
       
-        # Need to set which columns are used according to the options selected.
+      # Need to set which columns are used according to the options selected.
       TC.col.use.index <- switch(as.numeric(input$metric), 3, 4, 7, 1, 2, 6)
       mapvar <- colnames(TC1.2.[TC.col.use.index]) 
       
@@ -97,7 +97,18 @@ Map1_Server <- function(id) {
         mapdat.out <- TC1.2.     # Toggling between the two options will not change the plots for "all species"
         num.dat2 <- NULL
         
-      } else {  # Else, a single species was selected.
+      } else if (input$sppname == 2) {  #or, if all plots forested by our examined species was selected...
+        
+        all.occ.dat <- as.matrix(occ_orig[, 3:ncol(occ_orig)]) + as.matrix(occ_revis[, 3:ncol(occ_revis)])
+        all.occ.dat <- cbind(occ_orig[, 1:2], as.data.frame(all.occ.dat)) 
+        all.occ.dat$any <- apply(all.occ.dat[, grep("X", names(all.occ.dat))], 1, sum)
+        mapdat.out <- all.occ.dat %>% filter(any > 1) %>% 
+          dplyr::select(State_Plot) %>% 
+          left_join(TC1.2., by = "State_Plot") 
+        mapdat.out <- mapdat.out[, c(2:5, 1, 6:ncol(mapdat.out))]  # Needs to match column order of TC1.2.
+        num.dat2 <- NULL
+        # browser()
+      } else {                   # Else, a single species was selected.
         
         spp.code <- spp.names2$spp.codes[spp.names2$id == as.numeric(input$sppname)]  # Sets the code number for the selected species
         
@@ -130,10 +141,10 @@ Map1_Server <- function(id) {
     
     ### Map plot ###
     output$plot_map1 <- renderPlot({
-
+      
       map.plot.dat <- map.data()$mapdat.out
       map.var <- map.data()$mapvar  # The selected variable (e.g., "pre.precip" = visit timing and metric of choice)
-
+      
       if (input$map_scale == "1") {  # If "All spp" is selected then the full data file (TC1.2.) is used
         maxlat <- max(TC1.2.$LAT); minlat <- min(TC1.2.$LAT)
         maxlong <- max(TC1.2.$LON); minlong <- min(TC1.2.$LON)
@@ -171,8 +182,10 @@ Map1_Server <- function(id) {
       change.y.lab <- switch(as.numeric(input$metric), prcp, prcp, delt_prcp, prcp, prcp, delt_prcp)
       
       
-      if (input$sppname == "1") {  # "all spp" is selected.
+      if (input$sppname == "1" | input$sppname == "2" ) {  # "all spp" is selected.
         # Grabbing temperature and precipitation columns, but duplicating them so that if pre.temp is selected, pre.precip will be selected as well. Etc.
+        
+        
         change.x <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 1, 2, 6, 1, 2, 6)]) 
         change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 3, 4, 7, 3, 4, 7)])
         
@@ -185,7 +198,7 @@ Map1_Server <- function(id) {
         
         
       } else {
-
+        
         change.x <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 4, 5, 8, 4, 5, 8)]) # Temperature columns
         change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 6, 7, 9, 6, 7, 9)]) # Precipitation columns
         
@@ -202,7 +215,7 @@ Map1_Server <- function(id) {
           cplot.dat <- num.plot.dat  
           lab.name <- "Density Change\nDirection"
         }
-         # Plot for occupancy/density change for single species.
+        # Plot for occupancy/density change for single species.
         cplot <-  ggplot(cplot.dat, aes(get(change.x), get(change.y), color = as.factor(color.code))) + 
           geom_point() + 
           scale_color_viridis(discrete = TRUE,  name = lab.name) + 
@@ -232,13 +245,14 @@ Map1_Server <- function(id) {
                      "Temperature, C,  First Visit", "Temperature, C,  Second Visit", "Temperature, C,  First Visit")
       
       labs.y.p3 <- if (p3.type == "precip") "Precipitation Change, mm" else "Temperature Change, C"  # Set y labels
-
-      loess.ci <- if (input$ci == "1") TRUE else FALSE  # Do we want the smoother to produce a confidence interval? From radio button.
       
+      slm.line <- if (input$line == "1") TRUE else FALSE  # Do we want to show the spatial linear regression line?
+
       if (input$sppname == "1") {  # if "all species", produce another hexagon summary of data points.  Not attempting to fit smoothing lines.
         
         plot3.dat2 <- plot3.occ.dat %>% dplyr::select(contains(p3.type)) 
-        
+
+
         abs.ch <- ggplot(plot3.dat2, aes(get(paste0(p3.timing[metric.num], p3.type)), get(paste0("change.", p3.type)))) + 
           geom_hex(bins = if (p3.type == "precip") 200 else 100) +   # The precip values extend farther, so I want more hexagons.
           geom_hline(yintercept = 0) +
@@ -246,9 +260,66 @@ Map1_Server <- function(id) {
           labs(x = labs.x.p3[metric.num], y = labs.y.p3) +
           theme_bw()
         
-      } else {
+        ggp.abs.ch <- ggplotly(abs.ch, tooltip = "text") 
+        
+                
+      } else if (input$sppname == "2") {
+        
+        # Spatial regression results files (for map page)
+        
+        
+        if (as.numeric(input$metric) < 4) {
+          ch.title.word <- "precipitation"
+          ch.met.symb <- "mm"
+        } else {
+          ch.title.word <- "temperature"
+          ch.met.symb <- "C"
+        }
+        
+        ch.visit <- switch(as.numeric(input$metric),
+                           "first", "second", "first", "first", "second", "first")
+        
+        ch.title <- paste(paste0("Slopes of occupied plot ", ch.title.word, " change across ", ch.visit, " visit"), 
+                          "values. Mouse over endpoints to ID species.", sep = "<br>")
+        
+        ch.xlab <- paste0("Range of plot ", ch.title.word, " values, ", ch.visit, " visit, ", ch.met.symb) 
+        ch.ylab <- paste0("Change in plot ", ch.title.word, " values, ", ch.met.symb)
+        
+        dat.to.pto <- switch(as.numeric(input$metric), 
+                             ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1)
+        
+        
+        pto.dat <- pto.fcn(dat.to.pto) %>% mutate(spp = as.numeric(substr(spp, 2, nchar(spp)))) %>%
+          left_join(spp.names2 %>% dplyr::select(spp.codes, sel.names), by = c("spp" = "spp.codes"))
 
+        abs.ch <- ggplot(data = pto.dat, aes(x_value, pred_value, color = factor(spp), text = paste0(sel.names))) + 
+          geom_line() + 
+          geom_hline(yintercept = 0) + 
+          scale_color_viridis(discrete = TRUE, option = "H") + 
+          labs(title = ch.title, x = ch.xlab, y = ch.ylab) +
+          #theme_bw() + 
+          theme(legend.position = "none",
+                plot.title = element_text(hjust = 1))
+        
+        ggp.abs.ch <- ggplotly(abs.ch, tooltip = "text") %>% layout(margin = list(t = 75))
+        
+        
+      } else {
+        
+        spp.line <- switch(as.numeric(input$metric), 
+                           ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1) %>% 
+          filter(spp == paste0("X", spp.names2$spp.codes[which(spp.names2$id == as.numeric(input$sppname)) ]))
+#browser()
+        spp.line <- spp.line %>% mutate(pred1 = if (is.na(slp.coef)) int.coef else {int.coef + slp.coef * (x.min - center.adj)}, # for some odd reason, the code to create pred1 & 2 wasn't working, so recreated the values here.
+                                      pred2 = if (is.na(slp.coef)) int.coef else {int.coef + slp.coef * (x.max - center.adj)})
+        
+        
+        txt.coef <- paste0("Int = ", round(spp.line$int.coef, 2), sig.astx.fcn(spp.line, "int.p"), "\n",
+                           "Slope = ", round(spp.line$slp.coef, 2), sig.astx.fcn(spp.line, "slp.p"))
+        
         if (input$occ_num == "1") {   # "1"  = occupancy
+          
+          # Occupancy data
           plot3.occ.dat$color.code <- ifelse(plot3.occ.dat$orig == 1 & plot3.occ.dat$revis == 0, "Extirpated", 
                                              ifelse(plot3.occ.dat$orig == 1 & plot3.occ.dat$revis == 1, "Occupied", "Colonized"))
           
@@ -257,33 +328,43 @@ Map1_Server <- function(id) {
                                               color = as.factor(color.code))) + 
             geom_point() + 
             geom_hline(yintercept = 0) +
-            geom_smooth(se = loess.ci, linetype = "dashed", size = 0.5, span = 1) +  # Will do a loess or gam smoother.
             scale_color_viridis(discrete = TRUE,  name = "Occupancy Status") + 
             labs(x = labs.x.p3[metric.num], y = labs.y.p3) +
             theme_bw()
+#          browser()
+          if (input$line == "1") abs.ch <- abs.ch + 
+            geom_segment(aes(x = spp.line$x.min, xend = spp.line$x.max, y = spp.line$pred1, yend = spp.line$pred2), size = 1, color = "grey") +
+            annotate("text", x = 0.9*spp.line$x.max, y = 0.9 * max(get(paste0("change.", p3.type), plot3.occ.dat)), label = txt.coef, size = 3)
+
+          ggp.abs.ch <- ggplotly(abs.ch, tooltip = "text")
           
+            
         } else { # density change
           
           plot3.num.dat$color.code <- ifelse(plot3.num.dat$gt == 1 & plot3.num.dat$lt == 0, "More trees", "Fewer Trees")
           
-          #browser()
-          
+
           abs.ch <- ggplot(plot3.num.dat, aes(get(paste0(p3.timing[metric.num], p3.type)), get(paste0("change.", p3.type)), 
                                               color = as.factor(color.code))) + 
             geom_point() + 
             geom_hline(yintercept = 0) +
-            geom_smooth(se = loess.ci, linetype = "dashed", size = 0.5, span = 1) +
             scale_color_viridis(discrete = TRUE,  name = "Density Change\nDirection") +  
             labs(x = labs.x.p3[metric.num], y = labs.y.p3) +
             theme_bw()
           
+          if (input$line == "1") abs.ch <- abs.ch + 
+            geom_segment(aes(x = spp.line$x.min, xend = spp.line$x.max, y = spp.line$pred1, yend = spp.line$pred2), size = 1, color = "grey") +
+            annotate("text", x = 0.9*spp.line$x.max, y = 0.9 * max(get(paste0("change.", p3.type), plot3.occ.dat)), label = txt.coef, size = 3)  
+          
+          ggp.abs.ch <- ggplotly(abs.ch, tooltip = "text")
+            
         }
         
         
       }
       
-      ggplotly(abs.ch)
-      
+      ggp.abs.ch
+
     })      
     
     output$hist_plot <- renderPlot({
@@ -293,12 +374,12 @@ Map1_Server <- function(id) {
       
       metric.num <- as.numeric(input$metric)
       
-hist.type <- switch(metric.num,
-                        "precip", "precip", "precip", "temp", "temp", "temp")
-labs.x.hist <- if (hist.type == "precip") "Precipitation Change, mm" else "Temperature Change, C"
-
-            
-      if (input$sppname == "1") {
+      hist.type <- switch(metric.num,
+                          "precip", "precip", "precip", "temp", "temp", "temp")
+      labs.x.hist <- if (hist.type == "precip") "Precipitation Change, mm" else "Temperature Change, C"
+      
+      
+      if (input$sppname == "1" | input$sppname == "2") {
         
         hist.plt <- ggplot(hist.occ.dat, aes(get(paste0("change.", hist.type)))) +
           geom_histogram(bins = 200) +
@@ -308,28 +389,28 @@ labs.x.hist <- if (hist.type == "precip") "Precipitation Change, mm" else "Tempe
       } else {
         if (input$occ_num == "1") {   # "1"  = occupancy
           hist.occ.dat$color.code <- ifelse(hist.occ.dat$orig == 1 & hist.occ.dat$revis == 0, "Extirpated", 
-                                             ifelse(hist.occ.dat$orig == 1 & hist.occ.dat$revis == 1, "Occupied", "Colonized"))
+                                            ifelse(hist.occ.dat$orig == 1 & hist.occ.dat$revis == 1, "Occupied", "Colonized"))
           hist.dat <- hist.occ.dat
           hist.title <- "Occupancy Status"
-          } else {
-
+        } else {
+          
           hist.num.dat$color.code <- ifelse(hist.num.dat$gt == 1 & hist.num.dat$lt == 0, "More trees", "Fewer Trees")
           hist.dat <- hist.num.dat
           hist.title <- "Density Change Direction"
-          }
+        }
         #browser()
-          hist.plt <- ggplot(hist.dat, aes(x = get(paste0("change.", hist.type)), y = color.code, fill = color.code)) +
-            geom_density_ridges2( quantile_lines = T, quantile_fun = mean, alpha = 0.75, scale = 1.2) + 
-            scale_fill_viridis(discrete = TRUE) +  
-            labs(y = NULL, x = labs.x.hist, title = hist.title) +
-            theme_ridges() +
-            theme(legend.position = "none",
-                  text = element_text(size = 20))
-          
+        hist.plt <- ggplot(hist.dat, aes(x = get(paste0("change.", hist.type)), y = color.code, fill = color.code)) +
+          geom_density_ridges2( quantile_lines = T, quantile_fun = mean, alpha = 0.75, scale = 1.2) + 
+          scale_fill_viridis(discrete = TRUE) +  
+          labs(y = NULL, x = labs.x.hist, title = hist.title) +
+          theme_ridges() +
+          theme(legend.position = "none",
+                text = element_text(size = 20))
+        
       }
       
       hist.plt
-    
+      
     })
     
     
