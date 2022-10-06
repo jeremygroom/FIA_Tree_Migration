@@ -6,22 +6,24 @@ TabVarTiming_UI <- function(id) {
     fluidRow(column(width = 10, offset = 1, align = "center", h1("Comparisons of Variance Estimation and Timing Approaches on Species' Results"))),
     fluidRow(column(width = 8, offset = 2, align = "center",
                     box(width = 12,
-                        p("The purpose of this page is to explore differences in estimates between timing (using temperture or precipitation data
-                          from the 10 years preceeding the first or second visit) or variance estimation approach (Taylor series expansion or
-                          bootstrap).  If the user selects \"Timing (First vs. second 10 years\" the two data frames will show the difference in estimates
-                          for the second minus first 10 years for both the Taylor series expansion and bootstrap variance estimation.  At the bottom of the 
-                          page are two histograms of the percentage difference columns.  For the example given with Analysis type = Occupancy and Metric = 
-                          Temperature, we see that the second set of 10 years produce typically wider confidence intervals than the first 10 years.", style = "font-size:20px")))),
+                        p("The purpose of this page is to explore differences in species' estimates between timing (using plot temperture or precipitation 
+                          values for the first or second visit) or variance estimation approach (Taylor series expansion or
+                          bootstrap).  If the user selects \"Timing (First vs. second visit)\" the two data frames will show the difference in estimates
+                          for the second minus first visit for both the Taylor series expansion and bootstrap variance estimation.  If the user selects 
+                          \"Variance (Taylor series expansion vs. bootstrap)\" the two data frames will show the difference in estimates
+                          for the bootstrap minus the Taylor series expansion for both the first and second visit analyses.  At the bottom of the 
+                          page are two histograms of the percentage difference columns.  For the example given with Analysis type = Range shift and Metric = 
+                          Temperature, we see that the second visit produces typically wider confidence intervals than the first visit.", style = "font-size:20px")))),
     fluidRow(column(width = 3, offset = 1, 
                     selectInput(NS(id, "occ.num"), label = h3("Select analysis type"),
-                                choices = list("Occupancy" = 1, 
-                                               "Density" = 2))),
+                                choices = list("Range shift" = 1, 
+                                               "Density shift" = 2))),
              column(width = 3, selectInput(NS(id, "metric"), label = h3("Select metric"),
                                            choices = list("Precipitation" = 1, 
                                                           "Temperature" = 2))),
              column(width = 5, selectInput(NS(id, "var.time"), label = h3("Select comparison of variance or timing method"),
                                            choices = list("Variance (Taylor series expansion vs. bootstrap)" = 1, 
-                                                          "Timing (First vs. second 10 years)" = 2),
+                                                          "Timing (First vs. second visit)" = 2),
                                            selected = 1))),
     # Tables UI
     fluidRow(column(width = 4, offset = 1, uiOutput(NS(id, "tab1_title")),
@@ -45,18 +47,18 @@ TabVarTiming_Server <- function(id) {
     
     output$tab1_title <- renderUI({
       if (input$var.time == "1") {
-        tab1.title <- "Variation Difference (Bootstrap - Taylor),<br/>First 10 Years"
+        tab1.title <- "Variation Difference (Bootstrap - Taylor),<br/>First visit"
       } else {
-        tab1.title <- "Difference in Years (Second 10 - First 10),<br/>Taylor Series Estimated Variance"
+        tab1.title <- "Difference in Years (Second visit - First visit),<br/>Taylor Series Estimated Variance"
       }
       h3(HTML(tab1.title))
     })
     
     output$tab2_title <- renderUI({
       if (input$var.time == "1") {
-        tab2.title <- "Variation Difference (Bootstrap - Taylor),<br/>Second 10 Years"
+        tab2.title <- "Variation Difference (Bootstrap - Taylor),<br/>Second visit"
         } else {
-          tab2.title <- "Difference in Years (Second 10 - First 10),<br/>Bootstrap Variance"
+          tab2.title <- "Difference in Years (Second visit - First visit),<br/>Bootstrap Variance"
         }
       h3(HTML(tab2.title))
     })
@@ -114,9 +116,9 @@ TabVarTiming_Server <- function(id) {
       hist.dat1 <- tableprep()$tab1
 
       if (input$var.time == "1") {
-        hist1.title <- "Histogram of percentage CI difference\n(Bootstrap - Taylor) / Taylor, First 10 Years"
+        hist1.title <- "Histogram of percentage CI difference\n(Bootstrap - Taylor) / Taylor, First visit"
       } else {
-        hist1.title <- "Histogram of percentage CI difference in years\n(Second 10 - First 10) / (First 10), Taylor Series Estimated Variance"
+        hist1.title <- "Histogram of percentage CI difference in years\n(Second visit - First visit) / (First visit), Taylor Series Estimated Variance"
       }
       
       ggplot(hist.dat1, aes(`Percentage CI Range Difference`)) + 
@@ -134,9 +136,9 @@ TabVarTiming_Server <- function(id) {
       hist.dat2 <- tableprep()$tab2
       
       if (input$var.time == "1") {
-        hist2.title <- "Histogram of percentage CI difference\n(Bootstrap - Taylor) / Taylor, Second 10 Years"
+        hist2.title <- "Histogram of percentage CI difference\n(Bootstrap - Taylor) / Taylor, Second visit"
       } else {
-        hist2.title <- "Histogram of percentage CI difference in years\n(Second 10 - First 10) / (First 10), bootstrap variance"
+        hist2.title <- "Histogram of percentage CI difference in years\n(Second visit - First visit) / (First visit), bootstrap variance"
       }
       
       ggplot(hist.dat2, aes(`Percentage CI Range Difference`)) + 

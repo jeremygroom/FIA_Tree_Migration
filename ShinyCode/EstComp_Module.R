@@ -10,19 +10,19 @@ EstComp_UI <- function(id) {
     fluidRow(column(width = 6, offset = 3, align = "center", h1("Comparison of Species' Estimates"))),
     fluidRow(column(width = 8, offset = 2, align = "center",
                     box(width = 12,
-                        p("This plot allows the side-by-side comparison of different analysis types.  Occupancy analyses are those
+                        p("This plot allows the side-by-side comparison of different analysis types.  Range shift analyses are those
                    which show the difference in the range-wide temperature or precipitation values for a species between the first and 
-                   second visit.  Density analysis show the difference in temperature or precipitation values between plots that had more trees at the second 
-                   visit and those that had fewer.  The temperature or precipitation values used are estiamted from either the first 10 years up to the first visit
-                   or from the second ten years up to the second visit.  Users may also
-                   select which variance estimation procedure was used - either variance approximated through a Taylor series expansion (TSE Estimate)
+                   second visit.  Density shift analyses show the difference in temperature or precipitation values between plots that had more trees at the second 
+                   visit and those that had fewer.  The temperature or precipitation values used are estiamted from either the first 10 years up to the first visit (first visit)
+                   or from the second ten years up to the second visit (second visit).  Users may also
+                   select which variance estimation procedure was used - either variance approximated through a Taylor series expansion approximation (TSE Estimate)
                    or arrived at through a bootstrap procedure (Bootstrap).", style = "font-size:20px")))),
     
     fluidRow(column(width = 8, plotOutput(NS(id, "plot_estcomp"), height = 700)),
              column(width = 4, h2("Select analysis type"),
                     fluidRow(width = 12, selectInput(NS(id, "occ.num"), label = NULL,
-                                                     choices = list("Occupancy" = 1, 
-                                                                    "Density" = 2))),
+                                                     choices = list("Range Shift" = 1, 
+                                                                    "Density Shift" = 2))),
                     fluidRow(width = 12, h2("Left Figure Options")),
                     fluidRow(width = 12, selectInput(NS(id, "est.bs1"), label = h5("TSE Estimate or bootstrap"),
                                                      choices = list("TSE Estimate" = 1, 
@@ -32,8 +32,8 @@ EstComp_UI <- function(id) {
                                                      choices = list("Precipitation" = 1, 
                                                                     "Temperature" = 2))),
                     fluidRow(width = 12, selectInput(NS(id, "time1"), label = h5("Select time perspective"),
-                                                     choices = list("First 10 years" = 1,
-                                                                    "Second 10 years" = 2))),
+                                                     choices = list("First visit" = 1,
+                                                                    "Second visit" = 2))),
                     
                     fluidRow(column(width = 12, 
                                     fluidRow(width = 12, h2("Right Figure Options")),
@@ -45,8 +45,8 @@ EstComp_UI <- function(id) {
                                                                      choices = list("Precipitation" = 1, 
                                                                                     "Temperature" = 2))),
                                     fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
-                                                                     choices = list("First 10 years" = 1,
-                                                                                    "Second 10 years" = 2))))
+                                                                     choices = list("First visit" = 1,
+                                                                                    "Second visit" = 2))))
                     )
              )
     )
@@ -93,9 +93,9 @@ EstComp_Server <- function(id) {
       gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", o.n.sel, p.t.sel2, t.sel2))]]
       
       # Setting up title for each plot
-      title.o.n <- c("Occupancy, ", "Density, ")
+      title.o.n <- c("Range shift, ", "Density shift, ")
       title.p.t <- c("precipitation, ", "temperature, ")
-      title.time <- c("first 10 yrs, ", "second 10 yrs, ")
+      title.time <- c("first visit, ", "second visit, ")
       title.e.bs <- c("TSE estimate", "bootstrap estimate")
       plt1.title <- paste0(title.o.n[as.numeric(input$occ.num)], title.p.t[as.numeric(input$metric1)], "\n",
                            title.time[as.numeric(input$time1)], title.e.bs[as.numeric(input$est.bs1)])

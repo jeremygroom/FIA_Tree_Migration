@@ -8,59 +8,64 @@ Map1_UI <- function(id) {
     fluidRow(column(width = 10, offset = 1, align = "center", h1("Map and plots of temperature, precipitation, and species' ranges"))),
     fluidRow(column(width = 8, offset = 2, align = "center",
                     box(width = 12,
-                        p("These figures all display the raw FIA plot values.  Note that under \" select metric\" users can choose a change option
-                          for precipitation and temperature.  This is the difference in plots' metrics, the second 10 years - the first 10 years.  
-                          Under \"Select species data to display\" the default option is \"all\".  This provides all FIA plot PRISM data in Oregon,
-                          Washington, and California (Note that most FIA plots are not visited because they do not contain forest).", style = "font-size:20px"),
-                        p("In the box to the right of the map figure are three other figures.  All three respond to the metric and species selected, plus the \"Occupancy
-                        or density results\ selection.  Once you select a species, note that by clicking on the legend you can turn the display of different categories
-                          on or off.  The upper-left plot displays the distribution of precipitation and temperature data.  The upper-right plot shows
-                          a first or second 10-year metric on the X axis and the corresponding change metric on the Y axis. It also includes smoothers (
-                          loess or GAM) for each legend option.  The purpose of this figure is to evaluate the stableness of a metric's change across the X axis values.
-                          The purpose of the lower-left plot is to display the (non-weighted) mean and density of data from plot categories.", style = "font-size:20px")))),
+                        p("These figures all display PRISM temperature and precipitation information associated with FIA plots.  Note that under \" Select Metric\" users can choose a change option
+                          for precipitation and temperature.  This is the difference in plots' metrics, the second visit - the first visit.  
+                          Under \"Select species data to display\" the default option is \"All\".  This provides information on every FIA plot in Oregon,
+                          Washington, and California (note that most FIA plots are not visited because they do not contain forest).", style = "font-size:20px"),
+                        p("In the box to the right of the map are three other figures.  All three respond to the metric and species selected, plus the \"Range 
+                        or density shift results\" selection.  Once you select a species, note that by clicking on the legend you can turn the display of different categories
+                          on or off.  The first (top) plot displays a first or second visit metric on the X axis and the corresponding change metric on the Y axis. 
+                          It also includes an option to show the best spatially-balanced linear fit of the data for each legend option.
+                          The purpose of this figure is to evaluate the stability of a metric's change across the X axis values.
+                          The middle plot shows the distribution of precipitation and temperature data.
+                          The purpose of the histogram at the bottom is to display the (non-weighted) mean and density of data from plot categories.", style = "font-size:20px")))),
     
     
-    fluidRow(box(width = 6, offset = 3,
-                 column(width = 6, selectInput(NS(id, "metric"), label = h3("Select metric"),
-                                               choices = list("Precipitation, First 10 years" = 1, 
-                                                              "Precipitation, Second 10 years" = 2,
-                                                              "Change in Precipitation" = 3,
-                                                              "Temperature, First 10 years" = 4,
-                                                              "Temperature, Second 10 years" = 5,
-                                                              "Change in Temperature" = 6))),
-                 column(width = 6, selectInput(NS(id, "sppname"), label = h3("Select species data to display"),
-                                               choices = map.choices)))),   # "map.choices" is a long list (see global.r)
+    fluidRow(column(width = 10, offset = 1, align = "center", 
+                    box(width = 12,
+                        column(width = 4, selectInput(NS(id, "metric"), label = h3("Select metric"),
+                                                      choices = list("Precipitation, First visit" = 1, 
+                                                                     "Precipitation, Second visit" = 2,
+                                                                     "Change in Precipitation" = 3,
+                                                                     "Temperature, First visit" = 4,
+                                                                     "Temperature, Second visit" = 5,
+                                                                     "Change in Temperature" = 6))),
+                        column(width = 4, selectInput(NS(id, "sppname"), label = h3("Select species data to display"),
+                                                      choices = map.choices)),
+                        column(width = 4, selectInput(NS(id, "occ_num"), label = h3("Range or density shift results"),
+                                                      choices = list(
+                                                        "Range shift" = 1,
+                                                        "Density shift" = 2))
+                        )))
+    ),   # "map.choices" is a long list (see global.r)
     
     
     
     # Tables UI
-    fluidRow(box(width = 4, offset = 1,
-                 radioButtons(NS(id, "map_scale"), label = h4("Extent of map"),
-                              choices = list(
-                                "Full map extent" = 1,
-                                "Species range extent" = 2)),   
-                 fluidRow(width = 11, plotOutput(NS(id, "plot_map1"), height = 800))),
-             box(width = 8, 
-                 column(width = 6, h3("Data Distribution by Precipitation and Temperature")),
-                 column(width = 6, h3("How consistent was the metric change across the first or second visit values?")),
-                 fluidRow(
-                   column(width = 6, radioButtons(NS(id, "occ_num"), label = h4("Occupancy or density results"),
-                                                  choices = list(
-                                                    "Occupancy" = 1,
-                                                    "Change in density" = 2))
-                   ),
-                   column(width = 6, radioButtons(NS(id, "line"), label = h4("Show spatial linear regression line?"),
-                                                  choices = list(
-                                                    "Yes" = 1,
-                                                    "No" = 2))
-                   )
-                 ),
-                 fluidRow(column(width = 6, plotlyOutput(NS(id, "change_plot"), height = 400, width = 600)),
-                          column(width = 6, plotlyOutput(NS(id, "abs_change_plot"), height = 400, width = 600))
-                 ),
-                 fluidRow(column(width = 6, h3("Density plots of changes in metrics with means"))),
-                 fluidRow(column(width = 6, plotOutput(NS(id, "hist_plot"), height = 600, width = 600)))
-             )
+    fluidRow(column(width = 4, offset = 1, 
+                    box(width = 12, 
+                        radioButtons(NS(id, "map_scale"), label = h4("Extent of map"),
+                                     choices = list(
+                                       "Full map extent" = 1,
+                                       "Species range extent" = 2)),   
+                        fluidRow(column(width = 11, offset = 1, plotOutput(NS(id, "plot_map1"), height = 800, width = 400))))
+    ), 
+    
+    column(width = 7, 
+           box(width = 12, 
+               fluidRow(column(width = 10, h3("How consistent was the metric change across the first or second visit values?"))),
+               fluidRow(column(width = 8, radioButtons(NS(id, "line"), label = h4("Show spatial linear regression line?"),
+                                                       choices = list(
+                                                         "Yes" = 1,
+                                                         "No" = 2)))), 
+               fluidRow(column(width = 10, plotlyOutput(NS(id, "abs_change_plot"), height = 400, width = 600))),
+               
+               fluidRow(column(width = 10, h3("Data Distribution by Precipitation and Temperature"))),
+               fluidRow(column(width = 10, plotlyOutput(NS(id, "change_plot"), height = 400, width = 600))),
+               fluidRow(column(width = 10, h3("Density plots of changes in metrics with means"))),
+               fluidRow(column(width = 10, plotOutput(NS(id, "hist_plot"), height = 600, width = 600)))
+           )
+    )
     )
   )
 }
@@ -152,14 +157,25 @@ Map1_Server <- function(id) {
         maxlat <- max(map.plot.dat$LAT); minlat <- min(map.plot.dat$LAT)
         maxlong <- max(map.plot.dat$LON); minlong <- min(map.plot.dat$LON)
       }
+#browser()      
+      map.leg <- switch(as.numeric(input$metric),
+             "Precipitation (mm),\nFirst visit", 
+             "Precipitation (mm),\nSecond visit",
+             "Change in\nPrecipitation (mm)",
+             "Temperature (°C),\nFirst visit",
+             "Temperature (°C),\nSecond visit",
+             "Change in\nTemperature (°C)" )
+      
       
       #browser()
       ggplot() +
         coord_fixed(xlim = c(minlong - 1, maxlong + 1),  ylim = c(minlat - 1, maxlat + 1), ratio = 1.3) +
         geom_tile(data = map.plot.dat, mapping = aes(x = LON, y = LAT, z = get(map.var)), binwidth = 0.15, stat = "summary_2d", fun = mean, na.rm = TRUE) + 
-        scale_fill_viridis(option = "H") +
+        scale_fill_viridis(option = "H", name = map.leg) +
         geom_polygon(data = west_df, mapping = aes(x = long, y = lat, group = group), color = "black", fill = "transparent") +
-        theme_void() 
+        theme_void() +
+        theme(legend.position = c(0.85, 0.45))
+
       #+
       #geom_polygon(data = west_county, aes(x = long, y = lat, group = group), fill = NA, color = "white") 
     })
@@ -383,8 +399,9 @@ Map1_Server <- function(id) {
         
         hist.plt <- ggplot(hist.occ.dat, aes(get(paste0("change.", hist.type)))) +
           geom_histogram(bins = 200) +
-          labs(x = labs.x.hist) +
-          theme_bw()
+          labs(x = labs.x.hist, y = "Count") +
+          theme_bw() + 
+          theme(text = element_text(size = 15))
         
       } else {
         if (input$occ_num == "1") {   # "1"  = occupancy

@@ -37,7 +37,7 @@ FIAapp <- function(){
     dashboardHeader(title = "FIA Tree Migration Data Visualization",
                     tags$li(a(href = 'http://www.groomanalytics.com',   
                               img(src = 'GroomAnalyticsH.jpg',
-                                  title = "Groom Analytics Home", height = "50px"),
+                                  title = "Groom Analytics Home", height = "40px"),
                               style = "padding-top:5px; padding-bottom:5px; margin-right:10px"),
                             class = "dropdown"),
                     titleWidth = 700),    

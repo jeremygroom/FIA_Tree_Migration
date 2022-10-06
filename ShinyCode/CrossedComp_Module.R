@@ -28,8 +28,8 @@ CrossedComp_UI <- function(id) {
                     fluidRow(width = 12, h2("Y-axis Options")),
                     fluidRow(column(width = 12,  
                                     selectInput(NS(id, "occ.num1"), label = h5("Select analysis type"),
-                                                choices = list("Occupancy" = 1, 
-                                                               "Number" = 2)))),
+                                                choices = list("Range shift" = 1, 
+                                                               "Density shift" = 2)))),
                     fluidRow(width = 12, selectInput(NS(id, "est.bs1"), label = h5("Estimate or bootstrap"),
                                                      choices = list("Estimate" = 1, 
                                                                     "Bootstrap" = 2),
@@ -38,15 +38,15 @@ CrossedComp_UI <- function(id) {
                                                      choices = list("Precipitation" = 1, 
                                                                     "Temperature" = 2))),
                     fluidRow(width = 12, selectInput(NS(id, "time1"), label = h5("Select time perspective"),
-                                                     choices = list("First 10 years" = 1,
-                                                                    "Second 10 years" = 2)))),
+                                                     choices = list("First visit" = 1,
+                                                                    "Second visit" = 2)))),
              
              column(width = 4, offset = 1,
                     fluidRow(width = 12, h2("X-axis Options")),
                     fluidRow(column(width = 12,  
                                     selectInput(NS(id, "occ.num2"), label = h5("Select analysis type"),
-                                                choices = list("Occupancy" = 1, 
-                                                               "Number" = 2)))),
+                                                choices = list("Range shift" = 1, 
+                                                               "Density shift" = 2)))),
                     fluidRow(width = 12, selectInput(NS(id, "est.bs2"), label = h5("Estimate or bootstrap"),
                                                      choices = list("Estimate" = 1, 
                                                                     "Bootstrap" = 2),
@@ -55,8 +55,8 @@ CrossedComp_UI <- function(id) {
                                                      choices = list("Precipitation" = 1, 
                                                                     "Temperature" = 2))),
                     fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
-                                                     choices = list("First 10 years" = 1,
-                                                                    "Second 10 years" = 2))))
+                                                     choices = list("First visit" = 1,
+                                                                    "Second  visit" = 2))))
     )
     )
   )
@@ -117,9 +117,9 @@ CrossedComp_Server <- function(id) {
 
       # Axes labels need to correspond to order.r 
       # First the labels are built, then their order correctly assigned.
-      title.o.n <- c("Occupancy, ", "Tree number, ")
+      title.o.n <- c("Range shift, ", "Density shift, ")
       title.p.t <- c("precipitation, ", "temperature, ")
-      title.time <- c("first 10 yrs, ", "second 10 yrs, ")
+      title.time <- c("first visit, ", "second visit, ")
       title.e.bs <- c("estimate", "bootstrap estimate")
       r1.axis <- paste0(title.o.n[as.numeric(input$occ.num1)], title.p.t[as.numeric(input$metric1)], 
                            title.time[as.numeric(input$time1)], title.e.bs[as.numeric(input$est.bs1)])
