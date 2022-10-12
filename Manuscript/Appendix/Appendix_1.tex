@@ -40,7 +40,7 @@ The equations in this appendix apply to both the species range analysis and the 
 In this analysis we conduct post stratification.  We divided the study region into 25 strata which have different sampling intensities.  Because we are using stratified sampling, and inclusion probabilities are the same within strata for $\hat{\mu}_{kd}$ and $|\hat{D}_{kd}|$, we redefine equations 1 and 2 for specific strata as: 
 
 \begin{equation}
-\hat{Y}_{kdh} = \displaystyle\sum_{i=1}^{n_h} I_{kdh}(p_i)y(p_i)  
+\hat{Y}_{kdh} = \frac{1}{|\hat{D}_{kdh}|}\displaystyle\sum_{i=1}^{n_h} I_{kdh}(p_i)y(p_i)  
 \end{equation} 
 
 \begin{equation}
@@ -101,7 +101,7 @@ cov\big(\overline{x_h}, \overline{z_h}\big) = \frac{\displaystyle\sum_{i=1}^{n_h
 The latter portions of (\ref{eq:bigvar}) and (\ref{eq:bigcov}) are inconsequential, so (\ref{eq:bigvar}) and (\ref{eq:bigcov}) simplify to: 
 
  \begin{equation} \label{eq:bigvar_trunc}
-\hat{\nu}\big( \hat{x} \big) = \frac{1}{n} \Big[ \displaystyle\sum_{i=h}^{H} W_h n_h\rho\big(\hat{x}_{h}\big)   \Big]
+\hat{\nu}\big( \hat{x} \big) = \frac{1}{n} \Big[ \displaystyle\sum_{i=h}^{H} W_h n_h\rho\big(\overline{x_{h}}\big)   \Big]
 \end{equation}
 
 and
