@@ -35,9 +35,9 @@ The original equation for an approximate design unbiased estimator of the mean t
 
 where $I_{kd}(p_i)$ is an indicator variable that takes the value of 1 if the \emph{i}-th plot contains seedlings or mature trees of the \emph{k}-th species or 0 if otherwise; $y(p_i)$ is the $i$-th plot value for temperature and $\pi(p_i)$ is the inclusion density function in the \emph{i}-th plot, respectively; $|\hat{D}_{kd}|$ is an estimator of the size of the domain (range of seedlings or mature trees).
 
-The equations in this appendix apply to both the species range analysis and the species density analysis.  In this study $y(p_i)$ is the $i$-th plot value for temperature or precipitation ($y$) and $d$ indexes one of two conditions being compared, \emph{P} and \emph{Q}.  For the species range analysis $P$ and $Q$ represent plots occupied at the first visit and second visit respectively.  For the species density analysis $P$ and $Q$  represent plots with fewer or more trees at the second visit.  $I_{kd}(p_i)$ is an indicator variable that takes the value of 1 if the \emph{i}-th plot meets condition $P$ or $Q$ and 0 if otherwise; $|\hat{D}_{kd}|$ is an estimator of the domain size (number of plots that meet condition $P$ or $Q$).
+The equations in this appendix apply to both the species range analysis and the species density analysis.  In this study $y(p_i)$ is the $i$-th plot value for temperature or precipitation ($y$) and $d$ indexes one of two conditions being compared, \emph{P} and \emph{Q}.  For the species range shift analysis $P$ and $Q$ represent plots occupied at the first visit and second visit respectively.  For the species density analysis $P$ and $Q$  represent plots with fewer or more trees at the second visit.  $I_{kd}(p_i)$ is an indicator variable that takes the value of 1 if the \emph{i}-th plot meets condition $P$ or $Q$ and 0 if otherwise; $|\hat{D}_{kd}|$ is an estimator of the domain size (number of plots that meet condition $P$ or $Q$).
 
-In this analysis we conduct post stratification.  We divided the study region into 25 strata which have different sampling intensities.  Because we are using stratified sampling, and inclusion probabilities are the same within strata for $\hat{\mu}_{kd}$ and $|\hat{D}_{kd}|$, we redefine equations 1 and 2 for specific strata as: 
+Our analysis also differs from Monleon and Lintz (2015) in that we obtain estimates using a post stratification of the sample.  We divided the study region into 25 strata which have different sampling intensities.  Because we are using stratified sampling, and inclusion probabilities are the same within strata for $\hat{\mu}_{kd}$ and $|\hat{D}_{kd}|$, we redefine equations 1 and 2 for specific strata as: 
 
 \begin{equation}
 \hat{Y}_{kdh} = \frac{1}{|\hat{D}_{kdh}|}\displaystyle\sum_{i=1}^{n_h} I_{kdh}(p_i)y(p_i)  
@@ -65,7 +65,7 @@ where \emph{H} is the total number of strata and $W_h$ is the area weight for th
 
 
 
-We are interested in the difference in the ratio of trees of species \emph{k} divided by their encounter probability $|\hat{D}_{kd}|$ for condition $Q$ minus the same ratio for condition $P$.  We obtain the ratio for condition $P$ or $Q$ using equations 5 and 6 which are based on equation 4.16 from Scott et al. (2005):
+We are interested in the difference in the ratio of plots with species \emph{k} divided by their encounter probability $|\hat{D}_{kd}|$ for condition $Q$ minus the same ratio for condition $P$.  We obtain the ratio for condition $P$ or $Q$ using equations 5 and 6 which are based on equation 4.16 from Scott et al. (2005):
 
 
  \begin{equation}  \label{eq:hatMu}
@@ -141,7 +141,7 @@ The estimated variances for individual species differed widely.  Since estimator
 \hat{\Delta} = \big(\mathbf{c^T\Sigma^{-1}c\big)^{-1}c^T\Sigma^{-1}}\hat{\boldsymbol{\delta}}
 \end{equation}
 
-where $\hat{\boldsymbol{\delta}}$ is a vector of the individual species differences, $\hat{\delta}_k$, $\bold{c}$ is a vector of 1s of the same length as $\hat{\boldsymbol{\delta}}$, and $\mathbf{\Sigma}$ is the variance-covariance matrix of $\boldsymbol{\delta}$.  The variance estimator is: 
+where $\hat{\boldsymbol{\delta}}$ is a vector of differences in temperature or precipitation for individual species, $\hat{\delta}_k$, $\bold{c}$ is a vector of 1s of the same length as $\hat{\boldsymbol{\delta}}$, and $\mathbf{\Sigma}$ is the variance-covariance matrix of $\boldsymbol{\delta}$.  The variance estimator is: 
 
  \begin{equation} \label{eq:glsV}
 V\big(\hat{\Delta}\big) = \big(\mathbf{c^T\Sigma^{-1}c\big)^{-1}}

@@ -1,0 +1,8 @@
+In GIMP
+- tools - selection - fuzzy select
+- edit - fill with BG color
+
+- toolbox - select figure
+- Image - crop to selection
+
+file - export as
