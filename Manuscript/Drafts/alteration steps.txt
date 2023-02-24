@@ -1,4 +1,10 @@
+In PowerPoint:
+- Save desired figure as PDF
+
+
 In GIMP
+Import PDF at 300dpi
+
 - tools - selection - fuzzy select
 - edit - fill with BG color
 
@@ -6,3 +12,8 @@ In GIMP
 - Image - crop to selection
 
 file - export as
+
+If the figure is too large but I'd like it horizontal:
+- Save as PDF from Powerpoint
+- In GIMP, open the PDF at 300 dpi, crop, rotate.  Then, resize the image (Image - Scale Image). I can
+maintain 300 dpi

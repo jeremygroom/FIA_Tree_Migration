@@ -24,6 +24,7 @@ library(ggridges)
 
 FIAapp <- function(){
   source("ShinyCode/global.R")
+  source("ShinyCode/Home_Module.R")
   source("ShinyCode/EstComp_Module.R")
   source("ShinyCode/CrossedComp_Module.R")
   source("ShinyCode/TableComp1_Module.R")
@@ -40,13 +41,16 @@ FIAapp <- function(){
                                   title = "Groom Analytics Home", height = "40px"),
                               style = "padding-top:5px; padding-bottom:5px; margin-right:10px"),
                             class = "dropdown"),
-                    titleWidth = 700),    
+                    titleWidth = 300),    
     dashboardSidebar(
       sidebarMenu(
+        menuItem(HTML("Home"), tabName = "home"),
         menuItem(HTML("Comparison of species<br/>change estimates"), tabName = "EstComp"),
         menuItem(HTML("Crossed comparison of<br/>species change estimates"), tabName = "CrossedComp"),
         menuItem(HTML("Map of temperature, precipitation,<br/>and their changes over time"), tabName = "map1"),
-        menuItem(HTML("Tabular comparison of<br/>difference for variance<br/>and timing approaches"), tabName = "Tab1Comp")
+        menuItem(HTML("Tabular comparison of<br/>difference for variance<br/>and timing approaches"), tabName = "Tab1Comp"),
+        menuItem("Files and Code", icon = icon("github"), href = 'https://github.com/jeremygroom/FIA_Tree_Migration')
+        
 
       )),
       dashboardBody(
@@ -61,6 +65,10 @@ FIAapp <- function(){
         
       '))),
         tabItems(
+          tabItem(tabName = "home",
+                  fluidRow(
+                    Home_UI("Home1")
+                  )),
           tabItem(tabName = "EstComp",
                   fluidRow(
                     EstComp_UI("EstComp1")
@@ -81,6 +89,7 @@ FIAapp <- function(){
   )
   
   server <- function(input, output, session) {
+    output$Home1 <- Home_Server("Home1") 
     output$EstComp1 <- EstComp_Server("EstComp1") 
     output$CrossedComp1 <- CrossedComp_Server("CrossedComp1")
     output$MapFig1 <- Map1_Server("MapFig1")
