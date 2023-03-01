@@ -18,7 +18,7 @@ EstComp_UI <- function(id) {
                    select which variance estimation procedure was used - either variance approximated through a Taylor series expansion approximation (TSE Estimate)
                    or arrived at through a bootstrap procedure (Bootstrap).", style = "font-size:20px")))),
     
-    fluidRow(column(width = 8, plotOutput(NS(id, "plot_estcomp"), height = 700)),
+    fluidRow(column(width = 8, plotOutput(NS(id, "plot_estcomp"), height = 800)),
              column(width = 4, h2("Select analysis type"),
                     fluidRow(width = 12, selectInput(NS(id, "occ.num"), label = NULL,
                                                      choices = list("Range Shift" = 1, 

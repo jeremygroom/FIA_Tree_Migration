@@ -132,7 +132,7 @@ write_xlsx(t1, paste0(ms.file.loc, "Table1.xlsx"))
 # Related to Table 1
 
 nOccSpp <- nrow(t1)#numbers_to_words(nrow(t1), cap = F, hyphen = F)
-minOccPlots <- min(t1[, c(3, 4)])                    # Minimum number of plots occupied at either time period by any species
+minOccPlots <- min(apply(data.frame(x1 = t1[, 2], x2 = t1[, 2] - t1[, 3] + t1[, 4]), 1, min)  )                  # Minimum number of plots occupied at either time period by any species
 nNtreeSpp <- numbers_to_words(nrow(t1[t1$Lost > 50 & t1$Gained > 50, ]), cap = T)  # Number of tree-number analysis species reported on 
 minNtreePlots <- min(t1[t1$Lost > 50 & t1$Gained > 50, c(5, 6)])  # Minimum number of gained/lost plots used for tree-number analysis of any species 
 
@@ -393,7 +393,7 @@ The across-species GLS mean and 95% confidence interval for the range shift temp
 
 `r nNtreeSpp` species each inhabited at least `r minNtreePlots` plots that exhibited increases and decreases in the number of individuals of that species between visits (Table 1).   `r numbers_to_words(dens.shift.gymno, cap = T)` of those species were gymnosperms. The species density change analysis for temperature found that for `r length(num.results.t$temSE[num.results.t$temactmean < 0])` out of `r nrow(num.results.t)` species the difference in mean density estimates was negative (Figure 3).  Since the density change estimate is the mean temperature of plots that gained trees minus the mean temperature of plots that lost trees, a negative value indicates that the density shifted towards plots that were previously cooler (Figure 2C).  `r numbers_to_words(n.num.cooler + n.num.warmer, cap = T)` of the species had 95% confidence intervals that did not overlap with zero, suggesting a statistically significant difference at the multiple-comparison unadjusted α = 0.05.  The difference in mean temperature for *Pinus contorta* and *Pseudotsuga menziesii* was positive, which is consistent with a density shift towards previously warmer areas.  `r numbers_to_words(n.num.cooler, cap = T)` species (*`r num.cooler.spp`*) had a negative mean difference in temperature and 95% confidence intervals that did not include zero, consistent with a density shift towards areas that were previously cooler.  `r numbers_to_words(n.num.cooler + n.num.warmer, cap = T)` significant findings out of `r nrow(num.results.t)` at α = 0.025 is unexpected by chance (binomial *p* < 0.001).  Seven of the nine species exhibiting temperature-associated density shifts were gymnosperms.
 
-The  density change analysis for precipitation found that the densities of `r n.num.drier.all` species shifted negatively towards previously drier plots (Figure 4).  The 95% confidence intervals for `r numbers_to_words(n.num.drier, cap = F)` species with negative shifts (*`r num.drier.spp`*) did not contain zero. `r numbers_to_words(n.num.wetter, cap = T)` species, *`r num.wetter.spp`*, had densities shift towards previously wetter areas and a 95% confidence interval that did not contain zero.  This number of significant findings at α = 0.025 is unlikely due to chance alone (binomial *p* < 0.001).  Four of the eight species with density shifts associated with precipitation were gymnosperms.
+The  density change analysis for precipitation found that the densities of `r n.num.drier.all` species shifted towards previously drier plots (Figure 4).  The 95% confidence intervals for `r numbers_to_words(n.num.drier, cap = F)` species with negative shifts (*`r num.drier.spp`*) did not contain zero. `r numbers_to_words(n.num.wetter, cap = T)` species, *`r num.wetter.spp`*, had densities shift towards previously wetter areas and a 95% confidence interval that did not contain zero.  This number of significant findings at α = 0.025 is unlikely due to chance alone (binomial *p* < 0.001).  Four of the eight species with density shifts associated with precipitation were gymnosperms.
 
 The overall GLS estimates for the mean difference in temperature (and precipitation) between plots that had more and fewer trees was negative in both cases, with confidence intervals that did not include zero (for temperature, mean = `r num.gls.t[2, 1]` °C, 95% CI = `r num.gls.t[1, 1]` °C to `r num.gls.t[3, 1]` °C; for precipitation, mean = `r num.gls.p[2, 1]` °C, 95% CI = `r num.gls.p[1, 1]` °C to `r num.gls.p[3, 1]` °C).   Unlike Figure 3, these GLS confidence interval ranges are visible when plotted (Figure 4).
 
@@ -453,11 +453,11 @@ This work was supported by the Oregon Department of Forestry, contracts ODF-2253
 Data, analysis code, and dashboard code are publicly available at our GitHub repository (<https://tinyurl.com/yeyrt9up/>). 
 
 ## Acknowledgements
-We thank Andrew Yost from the Oregon Department of Forestry for supporting this project and for providing manuscript review.  We thank James Kagan from the Institute for Natural Resources, Oregon State University, for project assistance in its initial phase.  
+We thank Andrew Yost from the Oregon Department of Forestry for supporting this project and for providing manuscript review.  We thank James Kagan from the Institute for Natural Resources, Oregon State University, for project assistance in its initial phase.  Also, we are grateful to FIA field crews for their expertise and efforts to provide quality data.  
 
 ## Appendix A: Supplementary material
 
-Supplementary analysis methodology may be found online at: 
+Supplementary analysis methodology may be found online at: <https://tinyurl.com/43sp872x>
 
 \newpage
 

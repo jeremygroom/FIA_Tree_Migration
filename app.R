@@ -29,6 +29,7 @@ FIAapp <- function(){
   source("ShinyCode/CrossedComp_Module.R")
   source("ShinyCode/TableComp1_Module.R")
   source("ShinyCode/Map1_Module.R")
+  source("ShinyCode/Background_Module.R")
   source("ShinyCode/functions.r")
   
 #  addResourcePath(prefix = 'www', directoryPath = 'ShinyCode/')
@@ -44,7 +45,8 @@ FIAapp <- function(){
                     titleWidth = 300),    
     dashboardSidebar(
       sidebarMenu(
-        menuItem(HTML("Home"), tabName = "home"),
+        menuItem("Home", tabName = "home"),
+        menuItem("Background", tabName = "bkgrnd"),
         menuItem(HTML("Comparison of species<br/>change estimates"), tabName = "EstComp"),
         menuItem(HTML("Crossed comparison of<br/>species change estimates"), tabName = "CrossedComp"),
         menuItem(HTML("Map of temperature, precipitation,<br/>and their changes over time"), tabName = "map1"),
@@ -69,6 +71,10 @@ FIAapp <- function(){
                   fluidRow(
                     Home_UI("Home1")
                   )),
+          tabItem(tabName = "bkgrnd",
+                  fluidRow(
+                    Bkgrnd_UI("Background")
+                  )),
           tabItem(tabName = "EstComp",
                   fluidRow(
                     EstComp_UI("EstComp1")
@@ -90,6 +96,7 @@ FIAapp <- function(){
   
   server <- function(input, output, session) {
     output$Home1 <- Home_Server("Home1") 
+    output$Background <- Bkgrnd_Server("Background") 
     output$EstComp1 <- EstComp_Server("EstComp1") 
     output$CrossedComp1 <- CrossedComp_Server("CrossedComp1")
     output$MapFig1 <- Map1_Server("MapFig1")

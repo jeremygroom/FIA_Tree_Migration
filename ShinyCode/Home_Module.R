@@ -22,13 +22,13 @@ Home_UI <- function(id) {
                           Oregon, and Washington to examine shifts in the ranges and densities of tree species 
                           relative to plot temperature and precipitation values.  Plots were first visited between 2001 and 2010, and again ten years later, between 2011 and 
                           2019.  Temperature and precipitation data were obtained from", a("PRISM", href = "https://prism.oregonstate.edu/" ), ".", style = "font-size:20px"),
-                        p("We created this dashboard so that visitors could explore our data in greater depth than our manuscript allows.  Explore how changing estimation 
+                        p("We created this dashboard so that visitors could explore our data in greater depth than our manuscript allows.  See how changing estimation 
                           procedures affects outcomes.  Compare, say, temperature and precipitation outcomes simultaneously.  Check out the ranges of individual species 
                           and see how they’ve changed over ten years.", style = "font-size:20px"),
                         p("Our hope is that these broad-scale analysis results are useful for those curious about how tree species are responding to a changing climate, 
                           and how, at the level of a tree species, the climate is changing.", style = "font-size:20px"),
                         br(),
-                        p("Sketch by Farren Groom, 2022", style = "font-size:20px"))
+                        p("Sketch by Farren Groom, 2022", style = "font-size:14px"))
              )
     )
     
@@ -45,8 +45,8 @@ Home_Server <- function(id) {
     output$movers <- renderImage({
       return(list(
         src = "www/MigratingTrees.jpg",
-        width = "512",
-        height = "415px",
+        width = "701",
+        height = "569px",
         contentType = "image/jpg",
         alt = "Moving truck picture"
       ))

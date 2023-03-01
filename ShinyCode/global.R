@@ -97,3 +97,4 @@ spp.absent.gt <- spp.names2 %>% mutate(gt.spp = ifelse(spp.codes %in% spp.gt, 1,
   ch.PrecipV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.precip_delta.P.rds")) 
   ch.PrecipV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.precip_delta.P.rds")) 
   
+
