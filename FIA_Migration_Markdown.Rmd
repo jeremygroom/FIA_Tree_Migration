@@ -274,8 +274,203 @@ if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_"
   
 }
 
+#t3.caption = paste0("Table 2. Summary of spatial simultaneous autoregressive error model estimation of changes in plot temperature and precipitation across species' ranges #between the first and second visits (see text). The column Metric is the mean positive or negative (+, -) change in either temperature or precipitation ($\Delta$T, #$\Delta$P).  Intercept is the number of species with significant (p < 0.025) intercept estimates for intercept-only models.  The columns Slope+ and Slope- report the number #of species which were better modeled with positive and negative slope terms, respectively, with the initial visit plot temperature or precipitation value serving as the #model's independent variable.   
+#")
+
 ```
  
+ 
+ 
+```{r fig.map.generate}
+
+# The forested points distribution map was created as a QGIS project.  I attempted to create a version using R
+#  but wasn't pleased with it.  The R version will truly display all current points, if that is desired.  The code
+#  looks first for the PNG from the QGIS project ("PointDist.png").  If that is missing it next looks for the R PNG file
+#  ("ForestedPts_Fig.png").  If that is missing too, it recreates the figure, saves it, and calls for it.
+
+if (file.exists(paste0(ms.file.loc, "PointDist.png"))) {  # First looking for QGIS map
+forest.pts <-  include_graphics(paste0(ms.file.loc, "PointDist.png"))
+  
+} else if (file.exists(paste0(ms.file.loc, "ForestedPts_Fig.png"))) {  # Now looking for the R-created map
+forest.pts <-   include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
+  
+} else {   # Now it makes the R map.
+  # Finding all forested plots and defining and saving lat/lon.
+  total.plots2 <- total.plots %>% mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
+    filter(propfor > 0) %>% 
+    dplyr::select(State_Plot)
+                                         
+  for.pts <- left_join(total.plots2, TC1.2., by = "State_Plot") %>% 
+    dplyr::select(State_Plot, LAT, LON) %>%
+    distinct()
+  
+  for.pts <- for.pts[is.na(for.pts$LAT) == FALSE,]
+  
+  write_csv(for.pts, paste0(data.file.loc, "ForestedPts.csv")) 
+  
+  # Grabbing a layer of just the west-coast states.
+  states <- sf::st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
+  states2 <- states %>% mutate(west = ifelse(ID == "california" | ID == "washington" | ID == "oregon", 1, 0))
+  
+  # North America
+  worldmap <- ne_countries(scale = 'medium', type = 'map_units',
+                           returnclass = 'sf')
+  NorAm <- worldmap[worldmap$continent == "North America",]
+  NorAm2 <- sf::st_crop(NorAm, xmin = -180, xmax = 0, ymin = 0, ymax = 90)
+  
+
+  projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+  
+  # Box for inset map. Box goes around the west coast states
+  box_df = data.frame(lon = c(-126, -113), lat = c(32, 49.5))
+  
+  state.box <- box_df %>% 
+    sf::st_as_sf(coords = c("lon", "lat"), 
+                 crs = projcrs) %>% 
+    sf::st_bbox() %>% 
+    sf::st_as_sfc()
+  
+  # Main map of point distribution across states.
+  pts.map <- ggplot() + 
+    geom_sf(data = states[states$ID == "california" | states$ID == "oregon" | states$ID == "washington", ], fill = "white", size = 1) + 
+    geom_point(data = for.pts, mapping = aes(x = LON, y = LAT), alpha = 0.25) +
+    # coord_sf(xlim = c(-126, -113), ylim = c(32, 49.5), expand = FALSE) +
+    theme_void() + 
+    annotation_scale(style = "ticks") + 
+    ggspatial::annotation_north_arrow(
+      location = "bl", which_north = "true",
+      pad_x = unit(0.4, "in"), pad_y = unit(0.4, "in"),
+      style = ggspatial::north_arrow_nautical(
+        fill = c("grey40", "white"),
+        line_col = "grey20"
+      )
+    ) 
+  
+  
+  # Inset map
+  state.map <- ggplot() + 
+    geom_sf(data = NorAm, fill = "white") +
+    geom_sf(data = states2, aes(fill = factor(west)))  +
+    geom_sf(data = state.box, fill = NA, size = 1) +
+    coord_sf(xlim = c(-135, -55), ylim = c(15, 65), expand = TRUE) +
+    scale_discrete_manual(aesthetics = "fill", values = c("white", "grey")) +
+    theme_void() + 
+    theme(legend.position = "none",
+          panel.background = element_rect(colour = "black", size = 1))
+  
+  # Create PNG file
+  png(paste0(ms.file.loc, "ForestedPts_Fig.png"), width = 5, height = 7, units = "in", res = 300)
+  ggdraw(pts.map) +  # cowplot used here for creating inset map.
+    draw_plot(state.map,
+              x = 0.56, y = 0.27,
+              width = 0.3, height = 0.4)      
+  dev.off()
+  
+forest.pts <- include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
+  
+}
+
+forest.pts.caption <- paste0("Figure 1. Distribution of ", formatC(total.plot.for.num, format = "d", big.mark = ","), " forested FIA plots in the states of Oregon, Washington, and California.")  
+
+
+```
+
+```{r fig.RangeShift1.generation}
+if (file.exists(paste0(ms.file.loc, "RangeShift_Fig.png"))) {
+range.fig <-  include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
+} else {
+
+      # See dataprep function in functions.r
+      r1 <- fia.dataprep.fcn("occ.", "t", "1", "e") %>% arrange(desc(response)) %>% 
+        mutate(SciName2 = paste0("*", SciName, "*"))
+      
+      r1.order <- r1 %>% select(Spp.symbol) %>%
+        mutate(order = seq(1:n()))
+      
+      r2 <- fia.dataprep.fcn("occ.", "p", "1", "e") %>%
+        left_join(r1.order, by = "Spp.symbol") %>%
+        arrange(order)
+      
+      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "t", "1"))]]
+      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "p", "1"))]]
+
+      plt1.title <- "Range Shift, Temperature"
+      plt2.title <- "Range Shift, Precipitation"
+        plt1.x.ax <- "Difference in temperature (\u00B0C)"
+        plt2.x.ax <- "Difference in precipitation (mm)" 
+      # Calling on plotting functions from functions.r
+
+        source("ShinyCode/functions.r")
+
+      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 12) 
+      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 12)#1)
+      
+      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
+      ##  Change y-axis of p1 to null
+      q1 <- as.grob(q1)
+      p1 <- as.grob(p1)
+      
+      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
+
+  png(paste0(ms.file.loc, "RangeShift_Fig.png"), width = 7, height = 9, units = "in", res = 300)
+  p_all      
+  dev.off()
+  
+range.fig <- include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
+  
+}
+
+fig.rangeShift.cap = paste0("Figure 3.  Estimated mean range-shift temperature and precipitation differences between plot measurements for ", nrow(t1), "species.  For temperature and precipitation, mean changes greater than zero indicated that the species’ range was on average warmer or wetter, respectively, during the second visit.  The two plots include a vertical band representing the 95% GLS confidence interval for estimates of overall temperature or precipitation change among species.")
+```
+
+
+```{r fig.DensShift1.generation}
+if (file.exists(paste0(ms.file.loc, "DensityShift_Fig.png"))) {
+fig.densShift <- include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
+} else {
+
+      # See dataprep function in functions.r
+      r1 <- fia.dataprep.fcn("num.", "t", "1", "e") %>% arrange(desc(response)) %>% 
+        mutate(SciName2 = paste0("*", SciName, "*"))
+      
+      r1.order <- r1 %>% select(Spp.symbol) %>%
+        mutate(order = seq(1:n()))
+      
+      r2 <- fia.dataprep.fcn("num.", "p", "1", "e") %>%
+        left_join(r1.order, by = "Spp.symbol") %>%
+        arrange(order)
+      
+      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "t", "1"))]]
+      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "p", "1"))]]
+
+      plt1.title <- "Density Shift, Temperature"
+      plt2.title <- "Density Shift, Precipitation"
+        plt1.x.ax <- "Difference in temperature (\u00B0C)"
+        plt2.x.ax <- "Difference in precipitation (mm)" 
+      # Calling on plotting functions from functions.r
+
+      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 11) 
+      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 11)#1)
+      
+      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
+      ##  Change y-axis of p1 to null
+      q1 <- as.grob(q1)
+      p1 <- as.grob(p1)
+      
+      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
+
+  png(paste0(ms.file.loc, "DensityShift_Fig.png"), width = 7, height = 8, units = "in", res = 300)
+  p_all      
+  dev.off()
+  
+fig.densShift <- include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
+  
+}
+
+fig.densShift.cap = paste0("Figure 4. Estimated mean temperature and precipitation differences between plots with more and fewer living trees upon the second visit for ", nrow(num.results.t), " species (density shift).  Mean changes greater than zero indicated that more trees for a species were found in warmer/wetter plots (and/or fewer trees were found in cooler/drier plots), on average.  Both plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in plot temperature or precipitation between plots with more and fewer trees.")
+
+```
+
 
 <br>
 
@@ -341,7 +536,18 @@ The goal of this analysis was to evaluate the evidence of tree species distribut
 
 This study relies on  US National Forest Inventory datasets for all forestland in California, Washington, and Oregon, USA. The field data were collected by the FIA which generally defines forestland as an area greater than 4,050 m$^2$ at least 10 percent stocked or potentially stocked with tree species, excluding urban and agricultural land uses (Reams et al. 2005).  The FIA sampling design consists of a spatially balanced  probability sample.  The standard density of FIA plots is one ground plot every 24 km$^2$.  Plots were initially measured in California and Oregon between 2001 and 2010 while Washington plots were measured between 2002 and 2011.  We only had access to remeasurement data between 2011 and 2019, or nine year-pairs of measurements for California and Oregon and eight for Washington (2012-2019).  Consequently, the general plot sampling intensity for Oregon and California is one plot every 26.7 km$^2$ and one plot every 30 km$^2$ for Washington.  Within the three states there were different plot densification efforts which increased the number of overall strata.  We post-stratified the FIA plots into 25 strata based on these sample densities and ancillary information (e.g., land classification, ownership).  We used the strata and associated weights when estimating range and density shift estimates (Appendix).  
 
-The total sample size was `r formatC(total.plot.num, big.mark = ",")` plots, of which `r formatC(total.plot.for.num, big.mark = ",")`  were forested and `r formatC(total.plot.miss.num, big.mark = ",")`  could not be measured, either because the landowner denied access or because the plots were unsafe to reach or occupy (Figure 1).   Plot were configured with three points spaced 36.6m from a fourth center point and offset 120˚.   Plots containing forest land were installed and measured by field crews. At each of the four points within a plot, trees with stem diameter greater than or equal to 12.7 cm were tallied in a 7.32 m radius circular subplot (total area 672.5 m$^2$).  Crews also measured larger trees in macroplots (18m radius including the subplot at its center) and seedlings and saplings microplots (2.1m diameter plots within subplots).  For most species, stem diameter was measured at 1.37 m above the ground. Bechtold and Scott (2005) provide plot design details and measurement protocols.  
+The total sample size was `r formatC(total.plot.num, big.mark = ",")` plots, of which `r formatC(total.plot.for.num, big.mark = ",")`  were forested and `r formatC(total.plot.miss.num, big.mark = ",")`  could not be measured, either because the landowner denied access or because the plots were unsafe to reach or occupy (Figure 1).   Plot were configured with three points spaced 36.6m from a fourth center point and offset 120˚.   Plots containing forest land were installed and measured by field crews. At each of the four points within a plot, trees with stem diameter greater than or equal to 12.7 cm were tallied in a 7.32 m radius circular subplot (total area 672.5 m$^2$).  Crews also measured larger trees in macroplots (18m radius including the subplot at its center) and seedlings and saplings microplots (2.1m diameter plots within subplots).  For most species, stem diameter was measured at 1.37 m above the ground. Bechtold and Scott (2005) provide plot design details and measurement protocols. 
+
+
+\newpage
+
+```{r fig.map, fig.height = 8, fig.cap = forest.pts.caption}
+
+forest.pts
+
+```  
+
+
 
 ### 2.1 *Data*
 
@@ -360,6 +566,14 @@ We validated species identifications by comparing occupied plot distributions ag
 ### 2.2 *Analysis*  
 
 Our analysis progression is depicted in Figure 2.  To summarize, we first obtained temperature and precipitation values for all FIA plots, for both the first and second visit periods. We then conducted the range shift and density shift analyses.  Finally, we examined between-visit changes in plot temperature and precipitation patterns.   
+
+
+```{r AnalysisSteps, fig.width = 4, fig.asp = 2, fig.cap = "Figure 2. Analysis steps.  A: Predict temperature and precipitation values (open circles) from visit 1 and 2 values for each year (closed circles) for each FIA plot (e.g., Plot X).  B: Conduct range shift analysis for each species of interest. Range shift = mean of temperature or precipitation values for the population of plots occupied in visit 2 minus those occupied in visit 1. C: Conduct density shift analysis for each species of interest.  Density shift = mean of temperature or precipitation values for plots that gained individuals minus those that lost individuals. D: Temperature and precipitation across species-occupied plots.  For each species we examined how plot temperature and precipitation values changed between the two visits and related to visit 1 values.  For subplots B, C, and D, examples portray results for a single species and plot x axes use temperature or precipitation values from the visit 1 year (see text for explanation).  Graphical examples are for temperature, not precipitation."}
+
+include_graphics(paste0(ms.file.loc, "Fig Analysis Steps3.1.png"))
+
+```
+
 
 We used the plot-level mean annual temperature and precipitation modeled output from the spatially gridded (800 m) parameter-elevation regressions on independent slopes model (PRISM; Daly et al. 2008) to obtain temperature and precipitation estimated values for all FIA plots used in our analyses.  We drew from PRISM output for 1990 - 2020.  For each plot we fit a slope and intercept to the ten sequential yearly temperature or precipitation values prior to and including the first plot visit, and repeated the process for the second visit.  We used the two regression models to respectively obtain predicted first and second visit plot temperature or precipitation values (Figure 2A). Although we predicted first and second visit temperature and precipitation values, the range and density shift analysis outcomes reported here only make use of the first-visit predicted values. The range shift analysis compares, for instance, the mean of the first-visit temperature values for plots that were occupied at visit 2 minus those that were occupied at visit 1 (Figure 2B).  We assumed that first-visit temperature and precipitation values would relate to conditions ten years later. Specifically, for temperature, we assume that plots have warmed in an approximately linear and constant fashion across species' ranges.  We did not know whether precipitation would consistently positively or negatively change across species' ranges.  We therefore, for each species, explored their plot changes in temperature and precipitation between the first and second visit relative to first visit values (Figure 2D).   
 
@@ -385,6 +599,25 @@ Our dashboard (<https://tinyurl.com/yc8cf4k9/>) enables viewers to compare diffe
 
 During the first and/or second visit `r nrow(t1)`  species occupied `r formatC(total.plots.occ, big.mark = ",")` plots in total with each species occupying at least `r minOccPlots` plots at each visit (Table 1).  Of the `r nOccSpp` species, `r range.shift.gymno` were gymnosperms.  `r n.occ.cooler.all` of the species exhibited negative changes in their range-wide plot temperature means between visits, indicating a distributional range shift towards plots that were previously cooler (Figure 3).  The remaining `r length(occ.results.t$temSE[occ.results.t$temactmean > 0])` species exhibited mean shifts towards previously warmer plots.  `r numbers_to_words(n.occ.cooler + n.occ.warmer, cap = T)` of the species had 95% confidence intervals that did not overlap zero, which more strongly suggests that their ranges may have shifted.  During the second visit *`r occ.warmer.spp`* occupied, on average, previously warmer plots, while *`r occ.cooler.spp`*  occupied previously cooler plots.  `r numbers_to_words(n.occ.cooler + n.occ.warmer, cap = T)` significant findings out of `r nrow(occ.results.t)` at α = 0.025 may reasonably be expected to occur by chance alone if all significant findings represented Type-I errors (binomial *p* = `r p.est.occ.t`).   
 
+\newpage
+
+```{r Table_plots}
+kable(t1, caption = "Table 1.  Species included in the analysis.  The Remained Occupied, Extirpated, and Colonized columns indicate, respectively, the number of FIA plots per species that were occupied during both visits, were occupied during the first visit but not the second, and were occupied during the second visit but not the first.  The columns Lost and Gained are the number of plots that lost or gained individuals of a given tree species.")
+
+```
+Note: Native species not reported above because, for the range shift analysis, they occupied fewer than 50 plots: *`r not.used.spp.vec1`*, and *`r not.used.spp.vec2`*.
+
+<br>
+
+
+```{r fig.RangeShift1, fig.cap = fig.rangeShift.cap}
+
+range.fig
+
+```
+
+<br>
+
 For the precipitation range-shift analysis, `r length(occ.results.p$temSE[occ.results.t$temactmean < 0])` species exhibited negative changes between visits which suggests a shift toward previously drier plots. The only species with a 95% confidence interval that did not overlap zero was the Port Orford cedar, *`r occ.wetter.spp`* (Figure 3), with a potential range shift towards plots that previously received more annual precipitation (i.e., wetter plots).  `r numbers_to_words(n.occ.wetter + n.occ.drier, cap = T)` significant finding out of `r nrow(occ.results.t)` by chance alone is not unexpected. 
 
 The across-species GLS mean and 95% confidence interval for the range shift temperature (mean = `r occ.gls.t[2, 1]` °C, 95% CI = `r occ.gls.t[1, 1]` °C to `r occ.gls.t[3, 1]` °C) and precipitation (mean = `r occ.gls.p[2, 1]` °C, 95% CI = `r occ.gls.p[1, 1]` °C to `r occ.gls.p[3, 1]` °C) both encompassed zero which indicated that, overall, we found no evidence that species demonstrated a range shift towards regions that were previously warmer/cooler, or wetter/drier.  The GLS confidence interval bands are difficult to see in Figure 3 as they are narrow relative to the spread of the other data.
@@ -395,11 +628,25 @@ The across-species GLS mean and 95% confidence interval for the range shift temp
 
 The  density change analysis for precipitation found that the densities of `r n.num.drier.all` species shifted towards previously drier plots (Figure 4).  The 95% confidence intervals for `r numbers_to_words(n.num.drier, cap = F)` species with negative shifts (*`r num.drier.spp`*) did not contain zero. `r numbers_to_words(n.num.wetter, cap = T)` species, *`r num.wetter.spp`*, had densities shift towards previously wetter areas and a 95% confidence interval that did not contain zero.  This number of significant findings at α = 0.025 is unlikely due to chance alone (binomial *p* < 0.001).  Four of the eight species with density shifts associated with precipitation were gymnosperms.
 
+
+```{r fig.DensShift1, fig.cap = fig.densShift.cap}
+
+fig.densShift
+
+```
+
+
 The overall GLS estimates for the mean difference in temperature (and precipitation) between plots that had more and fewer trees was negative in both cases, with confidence intervals that did not include zero (for temperature, mean = `r num.gls.t[2, 1]` °C, 95% CI = `r num.gls.t[1, 1]` °C to `r num.gls.t[3, 1]` °C; for precipitation, mean = `r num.gls.p[2, 1]` °C, 95% CI = `r num.gls.p[1, 1]` °C to `r num.gls.p[3, 1]` °C).   Unlike Figure 3, these GLS confidence interval ranges are visible when plotted (Figure 4).
 
 ### 3.3 *Plot changes in precipitation and temperature*
 
 When we examined the mean change for species' plots we found that temperature and precipitation generally increased.  For the `r nrow(occ.results.t)` species, intercept-only spatial error models had `r t.int.pos` and `r p.int.pos` statistically significant intercept values (α = 0.025) for temperature and precipitation, respectively (Table 2).  None of the intercept-only models for temperature had statistically significant negative intercept estimates, while for precipitation `r numbers_to_words(p.int.neg)` species exhibited significant negative mean values.    
+
+
+```{r Table_plots3}
+kable(t3, escape = FALSE, caption = "Table 2. Summary of spatial simultaneous autoregressive error model estimation of changes in plot temperature and precipitation across species' ranges between the first and second visits (see text). The column Metric is the mean positive or negative (+, -) change in either temperature or precipitation ($\\Delta$T, $\\Delta$P).  Intercept is the number of species with significant (p < 0.025) intercept estimates for intercept-only models.  The columns Slope+ and Slope- report the number of species which were better modeled with positive and negative slope terms, respectively, with the initial visit plot temperature or precipitation value serving as the model's independent variable. ")
+
+```
 
 The temperature change models for `r numbers_to_words(sum(t3[1:2, 3]), cap = F)` species were better fit with positive slopes associated with precipitation values from the first visit (i.e., previously warmer plots increased the most) while `r numbers_to_words(sum(t3[1:2, 4]), cap = F)` were better fit with negative slopes. The precipitation change models for `r numbers_to_words(sum(t3[3:4, 3]), cap = F) ` species were better fit with positive slopes associated with precipitation values from the first plot visit while `r sum(t3[3:4, 4])` improved with negative slopes (i.e., previously drier plots increased in precipitation and/or wetter plots decreased in precipitation).   Individual species' plot temperature and precipitation data along with geographic plot distributions may be accessed in the dashboard.  
 
@@ -440,14 +687,11 @@ These findings indicate that the ranges of tree species within the contiguous we
 
 Our summaries of species range and density shifts across large geographical areas in relation to plot precipitation and temperature values hopefully provide useful large-scale information to managers and researchers.  The findings are probably best interpreted at the level of individual species, which we hope our dashboard facilitates, in combination with autecological information.  
 
-## CRediT authorship contribution statement
-_Jeremiah D Groom_: Data preparation, analysis, dashboard coding, manuscript preparation, writing - original draft, review, and editing.  _Vicente J. Monleon_: Initial code, conceptualization, FIA data access and review, obtaining relevant PRISM data, methodology, writing - review and editing. 
-
 ## Declaration of competing interest
 The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
 
 ## Funding
-This work was supported by the Oregon Department of Forestry, contracts ODF-2253A-20 and ODF-1109A-19.  
+This work was supported by the Oregon Department of Forestry, through contract ODF-2253A-20 and through the Oregon Department of Forestry and the Oregon State University Institute for Natural Resources contract ODF-1109A-19.   
 
 ## Data availability
 Data, analysis code, and dashboard code are publicly available at our GitHub repository (<https://tinyurl.com/yeyrt9up/>). 
@@ -558,234 +802,8 @@ Zhu, K., Woodall, C.W., Ghosh, S., Gelfand, A.E., Clark, J.S. 2014. Dual impacts
 
 
 
-\newpage
-
-## Figure Legends
-Figure 1. Distribution of `r total.plot.for.num` forested FIA plots in the states of Oregon, Washington, and California.  
-
-Figure 2. Analysis steps.  A: Predict temperature and precipitation values (open circles) from visit 1 and 2 values for each year (closed circles) for each FIA plot (e.g., Plot X).  B: Conduct range shift analysis for each species of interest. Range shift = mean of temperature or precipitation values for the population of plots occupied in visit 2 minus those occupied in visit 1. C: Conduct density shift analysis for each species of interest.  Density shift = mean of temperature or precipitation values for plots that gained individuals minus those that lost individuals. D: Temperature and precipitation across species-occupied plots.  For each species we examined how plot temperature and precipitation values changed between the two visits and related to visit 1 values.  For subplots B, C, and D, examples portray results for a single species and plot x axes use temperature or precipitation values from the visit 1 year (see text for explanation).  Graphical examples are for temperature, not precipitation.    
-
-Figure 3.  Estimated mean range-shift temperature and precipitation differences between plot measurements for `r nrow(t1)` species.  For temperature and precipitation, mean changes greater than zero indicated that the species’ range was on average warmer or wetter, respectively, during the second visit.  The two plots include a vertical band representing the 95% GLS confidence interval for estimates of overall temperature or precipitation change among species.      
-
-Figure 4. Estimated mean temperature and precipitation differences between plots with more and fewer living trees upon the second visit for `r nrow(num.results.t)` species (density shift).  Mean changes greater than zero indicated that more trees for a species were found in warmer/wetter plots (and/or fewer trees were found in cooler/drier plots), on average.  Both plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in plot temperature or precipitation between plots with more and fewer trees.      
 
 
-\newpage
-
-```{r fig.map, fig.height = 8}
-
-# The forested points distribution map was created as a QGIS project.  I attempted to create a version using R
-#  but wasn't pleased with it.  The R version will truly display all current points, if that is desired.  The code
-#  looks first for the PNG from the QGIS project ("PointDist.png").  If that is missing it next looks for the R PNG file
-#  ("ForestedPts_Fig.png").  If that is missing too, it recreates the figure, saves it, and calls for it.
-
-if (file.exists(paste0(ms.file.loc, "PointDist.png"))) {  # First looking for QGIS map
-  include_graphics(paste0(ms.file.loc, "PointDist.png"))
-  
-} else if (file.exists(paste0(ms.file.loc, "ForestedPts_Fig.png"))) {  # Now looking for the R-created map
-  include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
-  
-} else {   # Now it makes the R map.
-  # Finding all forested plots and defining and saving lat/lon.
-  total.plots2 <- total.plots %>% mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
-    filter(propfor > 0) %>% 
-    dplyr::select(State_Plot)
-                                         
-  for.pts <- left_join(total.plots2, TC1.2., by = "State_Plot") %>% 
-    dplyr::select(State_Plot, LAT, LON) %>%
-    distinct()
-  
-  for.pts <- for.pts[is.na(for.pts$LAT) == FALSE,]
-  
-  write_csv(for.pts, paste0(data.file.loc, "ForestedPts.csv")) 
-  
-  # Grabbing a layer of just the west-coast states.
-  states <- sf::st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
-  states2 <- states %>% mutate(west = ifelse(ID == "california" | ID == "washington" | ID == "oregon", 1, 0))
-  
-  # North America
-  worldmap <- ne_countries(scale = 'medium', type = 'map_units',
-                           returnclass = 'sf')
-  NorAm <- worldmap[worldmap$continent == "North America",]
-  NorAm2 <- sf::st_crop(NorAm, xmin = -180, xmax = 0, ymin = 0, ymax = 90)
-  
-
-  projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
-  
-  # Box for inset map. Box goes around the west coast states
-  box_df = data.frame(lon = c(-126, -113), lat = c(32, 49.5))
-  
-  state.box <- box_df %>% 
-    sf::st_as_sf(coords = c("lon", "lat"), 
-                 crs = projcrs) %>% 
-    sf::st_bbox() %>% 
-    sf::st_as_sfc()
-  
-  # Main map of point distribution across states.
-  pts.map <- ggplot() + 
-    geom_sf(data = states[states$ID == "california" | states$ID == "oregon" | states$ID == "washington", ], fill = "white", size = 1) + 
-    geom_point(data = for.pts, mapping = aes(x = LON, y = LAT), alpha = 0.25) +
-    # coord_sf(xlim = c(-126, -113), ylim = c(32, 49.5), expand = FALSE) +
-    theme_void() + 
-    annotation_scale(style = "ticks") + 
-    ggspatial::annotation_north_arrow(
-      location = "bl", which_north = "true",
-      pad_x = unit(0.4, "in"), pad_y = unit(0.4, "in"),
-      style = ggspatial::north_arrow_nautical(
-        fill = c("grey40", "white"),
-        line_col = "grey20"
-      )
-    ) 
-  
-  
-  # Inset map
-  state.map <- ggplot() + 
-    geom_sf(data = NorAm, fill = "white") +
-    geom_sf(data = states2, aes(fill = factor(west)))  +
-    geom_sf(data = state.box, fill = NA, size = 1) +
-    coord_sf(xlim = c(-135, -55), ylim = c(15, 65), expand = TRUE) +
-    scale_discrete_manual(aesthetics = "fill", values = c("white", "grey")) +
-    theme_void() + 
-    theme(legend.position = "none",
-          panel.background = element_rect(colour = "black", size = 1))
-  
-  # Create PNG file
-  png(paste0(ms.file.loc, "ForestedPts_Fig.png"), width = 5, height = 7, units = "in", res = 300)
-  ggdraw(pts.map) +  # cowplot used here for creating inset map.
-    draw_plot(state.map,
-              x = 0.56, y = 0.27,
-              width = 0.3, height = 0.4)      
-  dev.off()
-  
-  include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
-  
-}
-```
-  
-
-\newpage
-
-
-
-```{r AnalysisSteps, fig.width = 4, fig.asp = 2}
-
-include_graphics(paste0(ms.file.loc, "Fig Analysis Steps3.1.png"))
-
-```
-
-
-```{r RangeShift1}
-if (file.exists(paste0(ms.file.loc, "RangeShift_Fig.png"))) {
-    include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
-} else {
-
-      # See dataprep function in functions.r
-      r1 <- fia.dataprep.fcn("occ.", "t", "1", "e") %>% arrange(desc(response)) %>% 
-        mutate(SciName2 = paste0("*", SciName, "*"))
-      
-      r1.order <- r1 %>% select(Spp.symbol) %>%
-        mutate(order = seq(1:n()))
-      
-      r2 <- fia.dataprep.fcn("occ.", "p", "1", "e") %>%
-        left_join(r1.order, by = "Spp.symbol") %>%
-        arrange(order)
-      
-      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "t", "1"))]]
-      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "p", "1"))]]
-
-      plt1.title <- "Range Shift, Temperature"
-      plt2.title <- "Range Shift, Precipitation"
-        plt1.x.ax <- "Difference in temperature (\u00B0C)"
-        plt2.x.ax <- "Difference in precipitation (mm)" 
-      # Calling on plotting functions from functions.r
-
-        source("ShinyCode/functions.r")
-
-      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 12) 
-      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 12)#1)
-      
-      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
-      ##  Change y-axis of p1 to null
-      q1 <- as.grob(q1)
-      p1 <- as.grob(p1)
-      
-      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
-
-  png(paste0(ms.file.loc, "RangeShift_Fig.png"), width = 7, height = 9, units = "in", res = 300)
-  p_all      
-  dev.off()
-  
-  include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
-  
-}
-```
-
- 
-
-\newpage
-
-```{r DensShift1}
-if (file.exists(paste0(ms.file.loc, "DensityShift_Fig.png"))) {
-    include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
-} else {
-
-      # See dataprep function in functions.r
-      r1 <- fia.dataprep.fcn("num.", "t", "1", "e") %>% arrange(desc(response)) %>% 
-        mutate(SciName2 = paste0("*", SciName, "*"))
-      
-      r1.order <- r1 %>% select(Spp.symbol) %>%
-        mutate(order = seq(1:n()))
-      
-      r2 <- fia.dataprep.fcn("num.", "p", "1", "e") %>%
-        left_join(r1.order, by = "Spp.symbol") %>%
-        arrange(order)
-      
-      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "t", "1"))]]
-      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "p", "1"))]]
-
-      plt1.title <- "Density Shift, Temperature"
-      plt2.title <- "Density Shift, Precipitation"
-        plt1.x.ax <- "Difference in temperature (\u00B0C)"
-        plt2.x.ax <- "Difference in precipitation (mm)" 
-      # Calling on plotting functions from functions.r
-
-      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 11) 
-      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 11)#1)
-      
-      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
-      ##  Change y-axis of p1 to null
-      q1 <- as.grob(q1)
-      p1 <- as.grob(p1)
-      
-      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
-
-  png(paste0(ms.file.loc, "DensityShift_Fig.png"), width = 7, height = 8, units = "in", res = 300)
-  p_all      
-  dev.off()
-  
-  include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
-  
-}
-```
-
-
-
-
-\newpage
-Table 1.  Species included in the analysis.  The Remained Occupied, Extirpated, and Colonized columns indicate, respectively, the number of FIA plots per species that were occupied during both visits, were occupied during the first visit but not the second, and were occupied during the second visit but not the first.  The columns Lost and Gained are the number of plots that lost or gained individuals of a given tree species.    
-```{r Table_plots}
-kable(t1)
-
-```
-Note: Native species not reported above because, for the range shift analysis, they occupied fewer than 50 plots: *`r not.used.spp.vec1`*, and *`r not.used.spp.vec2`*.
-
-\newpage
-Table 2. Summary of spatial simultaneous autoregressive error model estimation of changes in plot temperature and precipitation across species' ranges between the first and second visits (see text). The column Metric is the mean positive or negative (+, -) change in either temperature or precipitation ($\Delta$T, $\Delta$P).  Intercept is the number of species with significant (p < 0.025) intercept estimates for intercept-only models.  The columns Slope+ and Slope- report the number of species which were better modeled with positive and negative slope terms, respectively, with the initial visit plot temperature or precipitation value serving as the model's independent variable.   
-
-```{r Table_plots3}
-kable(t3)
-
-```
 
 
 
