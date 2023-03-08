@@ -117,8 +117,8 @@ Bkgrnd_Server <- function(id) {
     output$method1 <- renderImage({
       return(list(
         src = "www/Method1.jpg",
-          width = "582px",   #  h/w = 0.3951515
-          height = "230px",
+          width = "522px",   #  h/w = 0.3951515
+          height = "206px",
         contentType = "image/jpg",
         alt = "First analysis step."
       ))
@@ -128,8 +128,8 @@ Bkgrnd_Server <- function(id) {
     output$method2 <- renderImage({
       return(list(
         src = "www/Method2.jpg",
-          width = "541px",   #  h/w = 0.4251969
-          height = "230px",
+          width = "522px",   #  h/w = 0.4251969
+          height = "201px",
         contentType = "image/jpg",
         alt = "Second analysis step."
       ))

@@ -5,10 +5,10 @@ account: groomanalyticsllc
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6508503
-bundleId: 6373764
+bundleId: 6932673
 url: https://groomanalyticsllc.shinyapps.io/FIA_Tree_Migration/
-when: 1665015766.86633
-lastSyncTime: 1665015766.86634
+when: 1678304829.57425
+lastSyncTime: 1678304829.57426
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: Analysis/PresAbsAnalysis_Final.R|Analysis/TreeNanalysis_Final.R|Analysis questions.docx|FIA_Migration_Markdown.docx|FIA_Migration_Markdown.Rmd|FIA_Migration_Markdown_20220831.docx|FIA_Migration_Markdown_20220902.docx|NumberMeans.csv|NumberMeans.xlsx|sig.num.csv|Task List.txt|Manuscript
+ignoredFiles: Analysis/PresAbsAnalysis_Final.R|Analysis/TreeNanalysis_Final.R|Analysis questions.docx|FIA_Migration_Markdown.docx|FIA_Migration_Markdown.Rmd|NumberMeans.csv|NumberMeans.xlsx|sig.num.csv|Task List.txt|template_use2.docx|Manuscript
