@@ -82,6 +82,8 @@ occ.results.t <- dat1$occ.t1.e %>%
 occ.results.p <- dat1$occ.p1.e %>% 
   mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
          wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
+ # Summer VPD range-shift results
+occ.results.s
 
   # Temperature density (number) results
 num.results.t <- dat1$num.t1.e %>% 
@@ -148,6 +150,10 @@ n.occ.warmer <- sum(occ.results.t$warmer)
 occ.warmer.spp <- paste0(occ.results.t$SciName[occ.results.t$warmer == 1], collapse = ", ")
 occ.cooler.spp <- occ.results.t$SciName[occ.results.t$cooler == 1]
 p.est.occ.t <- round((1 - pbinom((n.occ.cooler + n.occ.warmer), nrow(t1), 0.025)), digits = 3) 
+
+      # New: looking at expected number of false positives if no signal
+
+
 
 # Results Paragraph 2
 
@@ -420,7 +426,7 @@ range.fig <- include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
   
 }
 
-fig.rangeShift.cap = paste0("Figure 3.  Estimated mean range-shift temperature and precipitation differences between plot measurements for ", nrow(t1), "species.  For temperature and precipitation, mean changes greater than zero indicated that the species’ range was on average warmer or wetter, respectively, during the second visit.  The two plots include a vertical band representing the 95% GLS confidence interval for estimates of overall temperature or precipitation change among species.")
+fig.rangeShift.cap = paste0("Figure 3.  Estimated mean range-shift temperature and precipitation differences between plot measurements for ", nrow(t1), " species.  For temperature and precipitation, mean changes greater than zero indicated that the species’ range was on average warmer or wetter, respectively, during the second visit.  The two plots include a vertical band representing the 95% GLS confidence interval for estimates of overall temperature or precipitation change among species.")
 ```
 
 
@@ -523,11 +529,11 @@ One method compares the distribution of seedlings or saplings relative to adults
 
 Another approach for evaluating species’ responses to a changing climate is to quantify distribution shifts within ranges towards more habitable range edges instead of quantifying range edge changes (Kelly and Goulden 2008).  Murphy et al. (2010) and Fei et al. (2017) found shifts in plot abundance and occupancy within tree species’ ranges in the eastern United States northward (Murphy et al.) or northward and/or westward (Fei et al.).  Although these analyses do not capture changes in species geographical extents, they may be more sensitive to initial shifts in distribution. However, observing distributional shifts within ranges instead of shifts in range edges may indicate that a species lacks the ability to adjust to climatic shifts (Liang et al. 2018).  
 
-Monleon and Lintz (2015) used a design-based analysis approach to estimate mean seedling vs. mature tree distributions across California, Washington, and Oregon along gradients of elevation, latitude, and average temperatures of sample plots.  Across species they found seedlings to inhabit cooler plots (based on plot means of temperatures from 1970 - 2000) than mature trees.  They favored the use of average plot temperature over latitude or elevation as it directly reflected plot temperatures instead of serving as a proxy of temperature. Their findings appear to contradict those of Zhu (2012) and Woodall et al. (2013, 2018) who did not find similar range shifts.  Stanke et al. (2021) similarly utilized design-based estimates of FIA data to establish that relative densities of eight western tree species were declining, but their analysis did not directly examine the declines alongside environmental variables.   
+Monleon and Lintz (2015) used a design-based analysis approach to estimate mean seedling vs. mature tree distributions across California, Washington, and Oregon along gradients of elevation, latitude, and average temperatures of sample plots.  Across species they found seedlings to inhabit cooler plots (based on plot means of temperatures from 1970 - 2000) than mature trees.  They favored the use of average plot temperature over latitude or elevation as it directly reflected plot temperatures instead of serving as a proxy of temperature. Their findings appear to contradict those of Zhu (2012) and Woodall et al. (2013, 2018) who did not find similar range shifts.  Stanke et al. (2021) similarly utilized design-based estimates of data from the U.S. Forest Service Forest Inventory and Analysis Program (FIA) to establish that relative densities of eight western tree species were declining, but their analysis did not directly examine the declines alongside environmental variables.   
 
 As described above, previous studies have utilized different techniques for assessing the evidence of tree species distribution responses to a shifting climate.  Some findings, such as species range expansion with seedlings trailing adults (Fei et al. 2017, Sittaro et al. 2017, Woodall et al. 2018), appear counterintuitive or contradictory.  The Lenoir and Svenning (2015) literature review concluded that multifaceted approaches are needed when forecasting biodiversity responses to climate in order to provide comprehensive assessments of shifts in species' ranges.  They recommend that researchers examine the responses at trailing and leading edges of species’ ranges as well as the “optimum” within-range habitat (i.e., abundance).  They also recommend that these features be examined along latitudinal, elevational, and longitudinal gradients.    
 
-Within the last decade the U.S. Forest Service Forest Inventory and Analysis Program (FIA) has collected 10-year repeat visit data for their sample plots.  Similar to Monleon and Lintz (2015), this study capitalizes on the probabilistic FIA sampling design and develops design-based estimates to examine changes in two metrics of tree distribution relative to plot precipitation and temperature values.  Our study also examines the same pool of vegetation sampling plots used by Monleon and Lintz.  By utilizing revisit data, design-based estimates, and two climate-related variables, this study avoids model-based estimation assumptions and the use of proxy environmental gradients (latitude, elevation), and can directly assess changes over time instead of relying on interpretations of population features such as seedling and adult distributions.
+Within the last decade the FIA has collected 10-year repeat visit data for their sample plots.  Similar to Monleon and Lintz (2015), this study capitalizes on the probabilistic FIA sampling design and develops design-based estimates to examine changes in two metrics of tree distribution relative to plot precipitation and temperature values.  Our study also examines the same pool of vegetation sampling plots used by Monleon and Lintz.  By utilizing revisit data, design-based estimates, and two climate-related variables, this study avoids model-based estimation assumptions and the use of proxy environmental gradients (latitude, elevation), and can directly assess changes over time instead of relying on interpretations of population features such as seedling and adult distributions.
 
 The goal of this analysis was to evaluate the evidence of tree species distribution changes across the states of Washington, Oregon, and California, USA, over a 10-year period.  We examined distribution responses of tree species through the use of two metrics, "range shifts" and "density shifts", and two variables, plot temperature and precipitation.  We estimated a range shift by finding the difference in the mean of occupied plots' temperature (or precipitation) values between the first and second visit.  We estimated a density shift as the difference in mean temperature (or precipitation) values between plots that had more and fewer trees of a given species detected between visits.  Our secondary analysis goal was to examine our assumptions about environmental change at plots, which we approached by assessing the differences in temperature and precipitation between visits.   We created a data visualization dashboard (dashboard; <https://tinyurl.com/yc8cf4k9/>) so that users may explore analysis outcomes, compare results under different analysis scenarios, and examine data by and across species.   
 
@@ -620,7 +626,7 @@ range.fig
 
 For the precipitation range-shift analysis, `r length(occ.results.p$temSE[occ.results.t$temactmean < 0])` species exhibited negative changes between visits which suggests a shift toward previously drier plots. The only species with a 95% confidence interval that did not overlap zero was the Port Orford cedar, *`r occ.wetter.spp`* (Figure 3), with a potential range shift towards plots that previously received more annual precipitation (i.e., wetter plots).  `r numbers_to_words(n.occ.wetter + n.occ.drier, cap = T)` significant finding out of `r nrow(occ.results.t)` by chance alone is not unexpected. 
 
-The across-species GLS mean and 95% confidence interval for the range shift temperature (mean = `r occ.gls.t[2, 1]` °C, 95% CI = `r occ.gls.t[1, 1]` °C to `r occ.gls.t[3, 1]` °C) and precipitation (mean = `r occ.gls.p[2, 1]` °C, 95% CI = `r occ.gls.p[1, 1]` °C to `r occ.gls.p[3, 1]` °C) both encompassed zero which indicated that, overall, we found no evidence that species demonstrated a range shift towards regions that were previously warmer/cooler, or wetter/drier.  The GLS confidence interval bands are difficult to see in Figure 3 as they are narrow relative to the spread of the other data.
+The across-species GLS mean and 95% confidence interval for the range shift temperature (mean = `r occ.gls.t[2, 1]` °C, 95% CI = `r occ.gls.t[1, 1]` °C to `r occ.gls.t[3, 1]` °C) and precipitation (mean = `r occ.gls.p[2, 1]` mm, 95% CI = `r occ.gls.p[1, 1]` mm to `r occ.gls.p[3, 1]` mm) both encompassed zero which indicated that, overall, we found no evidence that species demonstrated a range shift towards regions that were previously warmer/cooler, or wetter/drier.  The GLS confidence interval bands are difficult to see in Figure 3 as they are narrow relative to the spread of the other data.
 
 ### 3.2 *Density change analysis*  
 

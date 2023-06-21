@@ -5,9 +5,14 @@
 
 CrossedComp_UI <- function(id) {
   tagList(
-    fluidRow(column(width = 8, offset = 2, align = "center", h1("Crossed Comparison of Species Change Estimates"))),
+    fluidRow(box(width = 12,
+                 #status = "success",   # makes the top of the box green.  
+                 column(10, offset = 1, align = "center", h1(id = "hp-title", "Crossed Comparison of Species Change Estimates"),
+                        tags$style(HTML("#hp-title{color: #154360;
+                             font-size: 40px;
+                                 font-style: italic;}"))))),
     fluidRow(column(width = 8, offset = 2, align = "center",
-                    box(width = 12,
+                    div(htmlOutput("box10"),  style = 'color:black; border-radius: .5em; font-size:22px; background-color:#ccffe6; padding: 20px; margin: 20px;' ,
                         p("This plot displays the means and confidence intervals plotted in the previous page, except along the X and Y axes. 
                           This enables users to compare, say, species' density changes by plot temperature or precipitation values.  The plot
                           can show all species (overwhelming), paired species (those that appear in the occupancy and density analyses), 
@@ -31,12 +36,14 @@ CrossedComp_UI <- function(id) {
                                                 choices = list("Range shift" = 1, 
                                                                "Density shift" = 2)))),
                     fluidRow(width = 12, selectInput(NS(id, "est.bs1"), label = h5("Estimate or bootstrap"),
-                                                     choices = list("Estimate" = 1, 
+                                                     choices = list("TSE Estimate" = 1, 
                                                                     "Bootstrap" = 2),
                                                      selected = 1)),
                     fluidRow(width = 12, selectInput(NS(id, "metric1"), label = h5("Select analysis metric"),
                                                      choices = list("Precipitation" = 1, 
-                                                                    "Temperature" = 2))),
+                                                                    "Temperature" = 2,
+                                                               "Maximum Vapor Pressure Deficit" = 3,
+                                                               "Minimum Vapor Pressure Deficit" = 4))),
                     fluidRow(width = 12, selectInput(NS(id, "time1"), label = h5("Select time perspective"),
                                                      choices = list("First visit" = 1,
                                                                     "Second visit" = 2)))),
@@ -48,12 +55,14 @@ CrossedComp_UI <- function(id) {
                                                 choices = list("Range shift" = 1, 
                                                                "Density shift" = 2)))),
                     fluidRow(width = 12, selectInput(NS(id, "est.bs2"), label = h5("Estimate or bootstrap"),
-                                                     choices = list("Estimate" = 1, 
+                                                     choices = list("TSE Estimate" = 1, 
                                                                     "Bootstrap" = 2),
                                                      selected = 2)),
                     fluidRow(width = 12, selectInput(NS(id, "metric2"), label = h5("Select analysis metric"),
                                                      choices = list("Precipitation" = 1, 
-                                                                    "Temperature" = 2))),
+                                                                    "Temperature" = 2,
+                                                               "Maximum Vapor Pressure Deficit" = 3,
+                                                               "Minimum Vapor Pressure Deficit" = 4))),
                     fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
                                                      choices = list("First visit" = 1,
                                                                     "Second  visit" = 2))))
@@ -76,20 +85,20 @@ CrossedComp_Server <- function(id) {
     output$plot_crossedcomp <- renderPlotly({
       
       o.n.sel1 <- o.n.[as.numeric(input$occ.num1)]  # Occupancy/Number, right column
-      p.t.sel1 <- p.t.[as.numeric(input$metric1)]   # Precip/Temp, left column
+      p.t.v.sel1 <- p.t.v.[as.numeric(input$metric1)]   # Precip/Temp/VPDmax/VPDmin, left column
       e.bs.sel1 <- e.bs[as.numeric(input$est.bs1)]  # Est/ Bootstrap est, left column 
       t.sel1 <- as.numeric(input$time1)             # Time period selected (first 10 yrs, 2nd 10 yrs), left column
       o.n.sel2 <- o.n.[as.numeric(input$occ.num2)]  # Occupancy/Number, right column
-      p.t.sel2 <- p.t.[as.numeric(input$metric2)]   # Precip/Temp, right column
+      p.t.v.sel2 <- p.t.v.[as.numeric(input$metric2)]   # Precip/Temp/VPDmax/VPDmin, right column
       e.bs.sel2 <- e.bs[as.numeric(input$est.bs2)]  # Est/ Bootstrap est, right column 
       t.sel2 <- as.numeric(input$time2)             # Time period selected (first 10 yrs, 2nd 10 yrs), right column      
       
       resp.name <- c("temactmean", "mean")
       
-      r1 <- fia.dataprep.fcn(o.n.sel1, p.t.sel1, t.sel1, e.bs.sel1) 
+      r1 <- fia.dataprep.fcn(o.n.sel1, p.t.v.sel1, t.sel1, e.bs.sel1) 
       r1 <- r1 %>%  dplyr::select(SppNames, SciName, response, LCI, UCI, sig)
       
-      r2 <- fia.dataprep.fcn(o.n.sel2, p.t.sel2, t.sel2, e.bs.sel2) 
+      r2 <- fia.dataprep.fcn(o.n.sel2, p.t.v.sel2, t.sel2, e.bs.sel2) 
       r2 <- r2 %>%  dplyr::select(SppNames, SciName, response, LCI, UCI, sig)
       
       if (nrow(r1) >= nrow(r2)) {
@@ -118,9 +127,9 @@ CrossedComp_Server <- function(id) {
       # Axes labels need to correspond to order.r 
       # First the labels are built, then their order correctly assigned.
       title.o.n <- c("Range shift, ", "Density shift, ")
-      title.p.t <- c("precipitation, ", "temperature, ")
+      title.p.t <- c("precipitation, ", "temperature, ", "maximum VPD, ", "minimum VPD, ")
       title.time <- c("first visit, ", "second visit, ")
-      title.e.bs <- c("estimate", "bootstrap estimate")
+      title.e.bs <- c("TSE estimate", "bootstrap estimate")
       r1.axis <- paste0(title.o.n[as.numeric(input$occ.num1)], title.p.t[as.numeric(input$metric1)], 
                            title.time[as.numeric(input$time1)], title.e.bs[as.numeric(input$est.bs1)])
       r2.axis <- paste0(title.o.n[as.numeric(input$occ.num2)], title.p.t[as.numeric(input$metric2)], 

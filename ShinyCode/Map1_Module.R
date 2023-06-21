@@ -29,7 +29,14 @@ Map1_UI <- function(id) {
                                                                      "Change in Precipitation" = 3,
                                                                      "Temperature, First visit" = 4,
                                                                      "Temperature, Second visit" = 5,
-                                                                     "Change in Temperature" = 6))),
+                                                                     "Change in Temperature" = 6,
+                                                                     "Maximum VPD, First visit" = 7,
+                                                                     "Maximum VPD, Second visit" = 8,
+                                                                     "Change in Maximum VPD" = 9, 
+                                                                     "Minimum VPD, First visit" = 10,
+                                                                     "Minimum VPD, Second visit" = 11,
+                                                                     "Change in Minimum VPD" = 12 
+                                                      ))),
                         column(width = 4, selectInput(NS(id, "sppname"), label = h3("Select species data to display"),
                                                       choices = map.choices)),
                         column(width = 4, selectInput(NS(id, "occ_num"), label = h3("Range or density shift results"),
@@ -41,7 +48,6 @@ Map1_UI <- function(id) {
     
     
     
-    # Tables UI
     fluidRow(column(width = 4, offset = 1, 
                     box(width = 12, 
                         radioButtons(NS(id, "map_scale"), label = h4("Extent of map"),
@@ -60,8 +66,22 @@ Map1_UI <- function(id) {
                                                          "No" = 2)))), 
                fluidRow(column(width = 10, plotlyOutput(NS(id, "abs_change_plot"), height = 400, width = 600))),
                
-               fluidRow(column(width = 10, h3("Data Distribution by Precipitation and Temperature"))),
-               fluidRow(column(width = 10, plotlyOutput(NS(id, "change_plot"), height = 400, width = 600))),
+               fluidRow(column(width = 10, h3("Data Distribution"))),
+               fluidRow(column(width = 8, plotlyOutput(NS(id, "change_plot"), height = 400, width = 600)),
+                        column(width = 4, selectInput(NS(id, "xChoice"), label = h3("Select X axis"),
+                                                      choices = list("Precipitation, First visit" = 1, 
+                                                                     "Precipitation, Second visit" = 2,
+                                                                     "Change in Precipitation" = 3,
+                                                                     "Temperature, First visit" = 4,
+                                                                     "Temperature, Second visit" = 5,
+                                                                     "Change in Temperature" = 6,
+                                                                     "Maximum VPD, First visit" = 7,
+                                                                     "Maximum VPD, Second visit" = 8,
+                                                                     "Change in Maximum VPD" = 9, 
+                                                                     "Minimum VPD, First visit" = 10,
+                                                                     "Minimum VPD, Second visit" = 11,
+                                                                     "Change in Minimum VPD" = 12
+                                                      ), selected = 4))),
                fluidRow(column(width = 10, h3("Density plots of changes in metrics with means"))),
                fluidRow(column(width = 10, plotOutput(NS(id, "hist_plot"), height = 600, width = 600)))
            )
@@ -95,7 +115,7 @@ Map1_Server <- function(id) {
     map.data <- reactive({
       
       # Need to set which columns are used according to the options selected.
-      TC.col.use.index <- switch(as.numeric(input$metric), 3, 4, 7, 1, 2, 6)
+      TC.col.use.index <- switch(as.numeric(input$metric), 1, 2, 11, 3, 4, 10, 5, 6, 12, 7, 8, 13)
       mapvar <- colnames(TC1.2.[TC.col.use.index]) 
       
       if (input$sppname == 1) {  # If the "all species" option is selected, the occupancy/map data are selected and the density (number) data are set to NULL.
@@ -146,7 +166,7 @@ Map1_Server <- function(id) {
     
     ### Map plot ###
     output$plot_map1 <- renderPlot({
-      
+
       map.plot.dat <- map.data()$mapdat.out
       map.var <- map.data()$mapvar  # The selected variable (e.g., "pre.precip" = visit timing and metric of choice)
       
@@ -164,10 +184,15 @@ Map1_Server <- function(id) {
              "Change in\nPrecipitation (mm)",
              "Temperature (°C),\nFirst visit",
              "Temperature (°C),\nSecond visit",
-             "Change in\nTemperature (°C)" )
+             "Change in\nTemperature (°C)",
+             "Maximum VPD (hPa),\nFirst visit",
+             "Maximum VPD (hPa),\nSecond visit",
+             "Change in\nMaximum VPD (hPa)",
+             "Minimum VPD (hPa),\nFirst visit",
+             "Minimum VPD (hPa),\nSecond visit",
+             "Change in\nMinimum VPD (hPa)"
+      )
       
-      
-      #browser()
       ggplot() +
         coord_fixed(xlim = c(minlong - 1, maxlong + 1),  ylim = c(minlat - 1, maxlat + 1), ratio = 1.3) +
         geom_tile(data = map.plot.dat, mapping = aes(x = LON, y = LAT, z = get(map.var)), binwidth = 0.15, stat = "summary_2d", fun = mean, na.rm = TRUE) + 
@@ -180,30 +205,44 @@ Map1_Server <- function(id) {
       #geom_polygon(data = west_county, aes(x = long, y = lat, group = group), fill = NA, color = "white") 
     })
     
-    
-    
+    observe({
+      updateSelectInput(session, NS(id, "xChoice"),
+                        selected = (as.numeric(input$metric) + 3) %% 12)  # Selecting a default x axis that is advanced 3 positions from 
+                                                                          #  selected y axis variable, and the value wraps after position 12.
+    })
     ### Plot of temperature and precipitation change  ###
     output$change_plot <- renderPlotly({
       
       occ.plot.dat <- map.data()$mapdat.out
       num.plot.dat <- map.data()$num.out
       
+
       # Setting up x and y-axis labels.
-      tdc <- "Temperature, C"
-      prcp <- "Precipitation, mm"
-      delt_tdc <- "Change in temperature, C"
+      prcp1 <- "Precipitation, 1st visit, mm"
+      prcp2 <- "Precipitation, 2nd visit, mm"
       delt_prcp <- "Change in precipitation, mm"
+      tdc1 <- "Temperature, 1st visit, C"
+      tdc2 <- "Temperature, 2nd visit, C"
+      delt_tdc <- "Change in temperature, C"
+      vMax1 <- "Maximum VPD, 1st visit, hPa"
+      vMax2 <- "Maximum VPD, 2nd visit, hPa"
+      delt_vMax <- "Change in Maximum VPD, hPa"
+      vMin1 <- "Minimum VPD, 1st visit, hPa"
+      vMin2 <- "Minimum VPD, 2nd visit, hPa"
+      delt_vMin <- "Change in Minimum VPD, hPa"
       
-      change.x.lab <- switch(as.numeric(input$metric), tdc , tdc, delt_tdc, tdc , tdc, delt_tdc)
-      change.y.lab <- switch(as.numeric(input$metric), prcp, prcp, delt_prcp, prcp, prcp, delt_prcp)
+      lab_order <- c(prcp1, prcp2, delt_prcp, tdc1, tdc2, delt_tdc, vMax1, vMax2, delt_vMax, vMin1, vMin2, delt_vMin)
       
-      
+    #if (input$sppname == 3) browser()
+     
+      change.x.lab <- lab_order[as.numeric(input$xChoice)]
+      change.y.lab <- lab_order[as.numeric(input$metric)]
+
       if (input$sppname == "1" | input$sppname == "2" ) {  # "all spp" is selected.
         # Grabbing temperature and precipitation columns, but duplicating them so that if pre.temp is selected, pre.precip will be selected as well. Etc.
         
-        
-        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 1, 2, 6, 1, 2, 6)]) 
-        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 3, 4, 7, 3, 4, 7)])
+        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$xChoice), 1, 2, 11, 3, 4, 10, 5, 6, 12, 7, 8, 13)]) 
+        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 1, 2, 11, 3, 4, 10, 5, 6, 12, 7, 8, 13)])
         
         # There are so many points that I've gone with geom_hex to summarize the density of points by small area. 
         cplot <- ggplot(occ.plot.dat, aes(get(change.x), get(change.y))) + 
@@ -214,9 +253,8 @@ Map1_Server <- function(id) {
         
         
       } else {
-        
-        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 4, 5, 8, 4, 5, 8)]) # Temperature columns
-        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 6, 7, 9, 6, 7, 9)]) # Precipitation columns
+        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$xChoice), 4, 5, 14, 6, 7, 13, 8, 9, 15, 10, 11, 16)]) 
+        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 4, 5, 14, 6, 7, 13, 8, 9, 15, 10, 11, 16)])
         
         if (input$occ_num == "1") {  # If occupancy, setting a column of labels for occupancy status, plus defining the plot data and legend name.
           occ.plot.dat$color.code <- ifelse(occ.plot.dat$orig == 1 & occ.plot.dat$revis == 0, "Extirpated", 
@@ -249,25 +287,32 @@ Map1_Server <- function(id) {
     output$abs_change_plot <- renderPlotly({
       plot3.occ.dat <- map.data()$mapdat.out
       plot3.num.dat <- map.data()$num.out
-      
-      metric.num <- as.numeric(input$metric)  # Numbers 1:6.  I simplify it here because I use this value a lot in this section.
-      
+      #if (input$sppname == 3) browser()
+      metric.num <- as.numeric(input$metric)  # Numbers 1:12.  I simplify it here because I use this value a lot in this section.
+       
       p3.type <- switch(metric.num,
-                        "precip", "precip", "precip", "temp", "temp", "temp")  # type = either precip or temp.
-      p3.timing <- c("pre.", "post.", "pre.", "pre.", "post.", "pre.")  # For the input$metric, people select "first visit", "second visit" or "change".  In this case I set change = first visit.
+                        "precip", "precip", "precip", "temp", "temp", "temp",
+                        "vpdmax", "vpdmax", "vpdmax", "vpdmin", "vpdmin", "vpdmin")  # type = either precip or temp.
+      
+      
+      p3.timing <- rep(c("pre.", "post.", "pre."), 4 ) # For the input$metric, people select "first visit", "second visit" or "change".  In this case I set change = first visit.
       #browser()
-      p3.x <- colnames(plot3.occ.dat[switch(metric.num, 1, 2, 1, 3, 4, 3)]) 
-      labs.x.p3 <- c("Precipitation, mm, First Visit", "Precipitation, mm, Second Visit", "Precipitation, mm, First Visit", # Set x labels
-                     "Temperature, C,  First Visit", "Temperature, C,  Second Visit", "Temperature, C,  First Visit")
+      p3.x <- colnames(plot3.occ.dat[switch(metric.num, 1, 2, 1, 3, 4, 3, 5, 6, 5, 7, 8, 7)]) 
+      fvsvfv <- c(", First Visit", ", Second Visit", ", First Visit")
+      labs.x.p3 <- c(paste0("Precipitation, mm", fvsvfv), paste0("Temperature, C", fvsvfv),
+                     paste0("Maximum VPD, hPa", fvsvfv), paste0("Minimum VPD, hPa", fvsvfv))
       
-      labs.y.p3 <- if (p3.type == "precip") "Precipitation Change, mm" else "Temperature Change, C"  # Set y labels
-      
+      labs.y.p3 <- switch(p3.type,                                            # Set y labels
+                          "precip" = "Precipitation Change, mm",
+                          "temp" = "Temperature Change, C",
+                          "vpdmax" = "Maximum VPD Change, hPa",
+                          "vpdmin" = "Minimum VPD Change, hPa")
+        
       slm.line <- if (input$line == "1") TRUE else FALSE  # Do we want to show the spatial linear regression line?
 
       if (input$sppname == "1") {  # if "all species", produce another hexagon summary of data points.  Not attempting to fit smoothing lines.
         
         plot3.dat2 <- plot3.occ.dat %>% dplyr::select(contains(p3.type)) 
-
 
         abs.ch <- ggplot(plot3.dat2, aes(get(paste0(p3.timing[metric.num], p3.type)), get(paste0("change.", p3.type)))) + 
           geom_hex(bins = if (p3.type == "precip") 200 else 100) +   # The precip values extend farther, so I want more hexagons.
@@ -283,16 +328,18 @@ Map1_Server <- function(id) {
         
         # Spatial regression results files (for map page)
         
+      ch.title.word <- switch(input$metric,
+                              "1" = "precipitation", "2" = "precipitation", "3" = "precipitation",
+                              "4" = "temperature", "5" = "temperature", "6" = "temperature", 
+                              "7" = "maximum VPD", "8" = "maximum VPD", "9" = "maximum VPD",
+                              "10" = "minimum VPD", "11" = "minimum VPD", "12" = "minimum VPD")  
         
-        if (as.numeric(input$metric) < 4) {
-          ch.title.word <- "precipitation"
-          ch.met.symb <- "mm"
-        } else {
-          ch.title.word <- "temperature"
-          ch.met.symb <- "C"
-        }
-        
+      ch.met.symb <- switch(input$metric,
+                            "1" = "mm", "2" = "mm", "3" = "mm", "4" = "C", "5" = "C", "6" = "C", 
+                            "7" = "hPa", "8" = "hPa", "9" = "hPa", "10" = "hPa", "11" = "hPa", "12" = "hPa")  
+
         ch.visit <- switch(as.numeric(input$metric),
+                           "first", "second", "first", "first", "second", "first",
                            "first", "second", "first", "first", "second", "first")
         
         ch.title <- paste(paste0("Slopes of occupied plot ", ch.title.word, " change across ", ch.visit, " visit"), 
@@ -302,9 +349,9 @@ Map1_Server <- function(id) {
         ch.ylab <- paste0("Change in plot ", ch.title.word, " values, ", ch.met.symb)
         
         dat.to.pto <- switch(as.numeric(input$metric), 
-                             ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1)
-        
-        
+                             ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1,
+                             ch.VPDmaxV1, ch.VPDmaxV2, ch.VPDmaxV1, ch.VPDminV1, ch.VPDminV2, ch.VPDminV1)
+
         pto.dat <- pto.fcn(dat.to.pto) %>% mutate(spp = as.numeric(substr(spp, 2, nchar(spp)))) %>%
           left_join(spp.names2 %>% dplyr::select(spp.codes, sel.names), by = c("spp" = "spp.codes"))
 
@@ -323,7 +370,8 @@ Map1_Server <- function(id) {
       } else {
         
         spp.line <- switch(as.numeric(input$metric), 
-                           ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1) %>% 
+                           ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1,
+                           ch.VPDmaxV1, ch.VPDmaxV2, ch.VPDmaxV1, ch.VPDminV1, ch.VPDminV2, ch.VPDminV1) %>% 
           filter(spp == paste0("X", spp.names2$spp.codes[which(spp.names2$id == as.numeric(input$sppname)) ]))
 #browser()
         spp.line <- spp.line %>% mutate(pred1 = if (is.na(slp.coef)) int.coef else {int.coef + slp.coef * (x.min - center.adj)}, # for some odd reason, the code to create pred1 & 2 wasn't working, so recreated the values here.
@@ -391,8 +439,11 @@ Map1_Server <- function(id) {
       metric.num <- as.numeric(input$metric)
       
       hist.type <- switch(metric.num,
-                          "precip", "precip", "precip", "temp", "temp", "temp")
-      labs.x.hist <- if (hist.type == "precip") "Precipitation Change, mm" else "Temperature Change, C"
+                          "precip", "precip", "precip", "temp",  "temp", "temp",
+                          "vpdmax", "vpdmax", "vpdmax", "vpdmin", "vpdmin", "vpdmin")
+      labs.x.hist <- switch(hist.type,                                            # Set y labels
+                            "precip" = "Precipitation Change, mm", "temp" = "Temperature Change, C",
+                            "maxvpd" = "Maximum VPD, hPa", "minvpd" = "Minimum VPD, hPa")
       
       
       if (input$sppname == "1" | input$sppname == "2") {

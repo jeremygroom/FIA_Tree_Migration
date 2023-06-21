@@ -38,15 +38,15 @@ library(grid)
 library(gridExtra)
 library(ggplotify) # enables as.grob() function
 
-for (x in 1:2) {
+for (x in 1:4) {
   for (y in 1:2) {
 ############## 
 # -- some constants
 
-    resp.vars <- c("Temp", "annpre")
+    resp.vars <- c("Temp", "annpre", "smrmaxvpd", "smrminvpd")
 
 # The SELECT.VAR constant will be used to create data with only the selected variable and save output with that variable name.
-SELECT.VAR <- resp.vars[x] # Variables = "Temp", "annpre", "decmint", "augmaxt", "smrmnvpd"
+SELECT.VAR <- resp.vars[x] # Variables = "Temp", "annpre", "decmint", "augmaxt", "smrmaxvpd", "smrminvpd"
                          #   For         Mean Temp, Annual Precip, December Min Temp, August Max Temp, Summer Vapor Pressure Deficit
 RESP.TIMING <- y # 1 #2  # For which visit (1st or 2nd) do we want the predicted temperature or precipitation values?
 
@@ -59,7 +59,7 @@ LOC <- "Data/"  # Where the data are stored.
 
 # Obtaining the response value, whether it be temperature or precipitation values from the first or second visit,
 #     as determined by the regression on the previous 10 years.
-resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>%
+resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip.", "smrmaxvpd" = "vpdmax.", "smrminvpd" = "vpdmin."),  "20.10.csv")) %>% #"1st.2nd.csv")) %>%
   select(c(1:3, RESP.TIMING + 3)) 
 colnames(resp.values)[4] <- "response"
 v1 <- resp.values[, 4]
@@ -127,7 +127,7 @@ summary_A1 <- Analysis1.2 %>% filter(SPCD %in% ordered.spp$SppCode) %>% select(S
             total = sum(n_1, n_2, n_3))
 
    # The "summary_A1" info is saved for Table1 in the manuscript
-#write_csv(summary_A1 %>% dplyr::select(SPCD, n_1, n_3), paste0(LOC, "Total.Num.GT.LT.csv"))
+write_csv(summary_A1 %>% dplyr::select(SPCD, n_1, n_3), paste0(LOC, "Total.Num.GT.LT.csv"))
 
 spp_A1 <- summary_A1 %>% filter(n_1 > 50 & n_3 > 50) %>% select(SPCD)  # Species with > 50 plots with num.code = 1 , > 50 plots with num.code = 3 (NOT INCLUDING num.code 2)
 ordered.spp <- ordered.spp[ordered.spp$spp.codes %in% spp_A1$SPCD,]
@@ -163,7 +163,7 @@ test2 <- plotall1.5 %>% group_by(PLOT_FIADB, STATECD) %>% summarize(n.propfor = 
 # There are 1278 plot visits where one of the visits PLOT_STATUS_CD = 3.  I checked and verified that there are no tree data plots in any of the plots where
 # PLOT_STATUS_CD = 3.
 test3 <- plotall1.5 %>% group_by(PLOT_FIADB, STATECD) %>% summarize(propfor_sum = sum(propfor), 
-                                                                    PSCD = 3 %in% PLOT_STATUS_CD) %>%
+  PSCD = 3 %in% PLOT_STATUS_CD) %>%
   filter(propfor_sum > 0, PSCD == T)
    # The code for testing if PLOT_STATUS_CD = 3 is:
    #  test3$State_Plot <- as.numeric(paste0(test3$PLOT_FIADB, test3$STATECD))
@@ -176,7 +176,7 @@ test3 <- plotall1.5 %>% group_by(PLOT_FIADB, STATECD) %>% summarize(propfor_sum 
 ## select the second visit propfor/propnonfor/ etc. values to represent the plot.  
 ### I assume we remove 2010 plots from the analysis as well??  We have no tree data from INVYR == 2010.
 # This selection reduces the plot number to 38236
-plotall2 <- plotall1.5 %>% select(-plt_cn) %>% distinct()
+plotall2 <- plotall1.5 %>% select(-plt_cn) %>% filter(INVYR > 2010) %>% distinct()
 
 
 Analysis2 <- left_join(plotall2, Analysis2, by = c("STATECD", "PLOT_FIADB")) %>%
@@ -199,7 +199,8 @@ names(Analysis3)[13:ncol(Analysis3)] <- paste0("X", names(Analysis3)[13:ncol(Ana
 Analysis3 <- left_join(Analysis3, resp.values %>% select(-INVYR), by = c("STATECD", "PLOT_FIADB"))    # All plots are successfully joined to our plots with no propmiss gaps (NA).  
 Analysis3 <- Analysis3[, c(1:12, ncol(Analysis3), 13:(ncol(Analysis3) - 1))]
 
-Analysis3 <- Analysis3[Analysis3$PLOT_FIADB != 97917, ]  # This is the only plot for which we do not have precip or temp data
+Analysis3 <- Analysis3[Analysis3$PLOT_FIADB != 97917, ]  # Non-forested plot without climate data
+Analysis3 <- Analysis3[Analysis3$PLOT_FIADB != 53851, ]  # This plot is missing information
 
 Analysis3[is.na(Analysis3)] <- 0         # replacing all NA values with 0
 
@@ -574,11 +575,14 @@ p1 <- bs.plot.fcn(r2, r2$mean, "MeansPlot_BS1.png", 1, "Bootstrap Mean", r2$Spp.
 q1 <- as.grob(q1)
 p1 <- as.grob(p1)
 
-if(SELECT.VAR == "annpre"){
-  group.x.lab <- "Mean Precipitation Difference\n(revisit minus original visit, mm)" 
-} else {  
-  group.x.lab <- "Mean Temperature Difference\n(revisit minus original visit \u00B0C)" 
-}
+
+
+group.x.lab <- switch(x, 
+   "Mean Precipitation Difference\n(revisit minus original visit, mm)", 
+   "Mean Temperature Difference\n(revisit minus original visit \u00B0C)",
+   "Mean Maximum Vapor Pressure Deficit\n(revisit minus original visit)",
+   "Mean Minimum Vapor Pressure Deficit\n(revisit minus original visit)")
+
 
 p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.65))
 x.grob <- textGrob(group.x.lab, gp = gpar(fontfamily = "serif"))
@@ -634,16 +638,19 @@ n.num.plotBS.vs.Est <- tibble(Vals = c("n", "Mean", "LCI", "UCI"), Ests = c(n.es
 write_csv(n.num.plotBS.vs.Est, paste0(RES, "n.num.PlotBSvsEst_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
 
 
-  } # Ending first/second visit for-loop
+  }
+}
+
+
+  # Ending first/second visit for-loop
   
   ## Examining change metrics for temperature and precipitation
   
-  resp.values.all <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>% 
+  resp.values.all <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip.", "smrmaxvpd" = "vpdmax.", "smrminvpd" = "vpdmin."),  "20.10.csv")) %>% 
     dplyr::select(-INVYR)
   
-  which(names())  
   
-  resp.names <- c("temp", "precip")
+  resp.names <- c("temp", "precip", "vpdmax", "vpdmin")
   
   gt.2 <- gt %>% dplyr::select(PLOT_FIADB, STATECD, contains("X")) %>%
     pivot_longer(cols = contains("X"), names_to = "SppCodes", values_to = "gt")

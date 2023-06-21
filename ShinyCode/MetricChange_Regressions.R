@@ -15,15 +15,26 @@ occ.orig <- read_csv(paste0(data.file.loc, "Occ_OriginalVisit.csv")) %>%
 occ.rev <- read_csv(paste0(data.file.loc, "Occ_Revisit.csv")) %>% 
   dplyr::select(State_Plot, W_h,  starts_with("X"))
 
-delt.t <- read_csv(paste0(data.file.loc, "tmp.1st.2nd.csv")) %>% 
+delt.t <- read_csv(paste0(data.file.loc, "tmp.20.10.csv")) %>% #"tmp.1st.2nd.csv")) %>% 
   mutate(delta.T = post.temp - pre.temp,
          State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   dplyr::select(State_Plot, pre.temp, post.temp, delta.T)
 
-delt.p <- read_csv(paste0(data.file.loc, "precip.1st.2nd.csv")) %>% 
+delt.p <- read_csv(paste0(data.file.loc, "precip.20.10.csv"))%>% #"precip.1st.2nd.csv")) %>% 
   mutate(delta.P = post.precip - pre.precip,
          State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   dplyr::select(State_Plot, pre.precip, post.precip, delta.P)
+
+delt.maxv <- read_csv(paste0(data.file.loc, "vpdmax.20.10.csv")) %>% 
+  mutate(delta.Vmax = post.vpdmax - pre.vpdmax,
+         State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
+  dplyr::select(State_Plot, pre.vpdmax, post.vpdmax, delta.Vmax)
+
+delt.minv <- read_csv(paste0(data.file.loc, "vpdmin.20.10.csv")) %>% 
+  mutate(delta.Vmin = post.vpdmin - pre.vpdmin,
+         State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
+  dplyr::select(State_Plot, pre.vpdmin, post.vpdmin, delta.Vmin)
+
 
 occ.dat <- as.matrix(occ.orig[, 3:ncol(occ.orig)]) + as.matrix(occ.rev[, 3:ncol(occ.rev)])
 occ.dat <- cbind(occ.orig[, 1:2], as.data.frame(occ.dat)) 
@@ -32,7 +43,9 @@ occ.dat$occ.vals  <- apply(occ.dat[, 3:ncol(occ.dat)], 1, sum)
 
 occ.dat2 <- occ.dat[which(occ.dat$occ.vals > 0), ] %>% 
   left_join(delt.t, by = "State_Plot") %>%   
-  left_join(delt.p, by = "State_Plot") %>% 
+  left_join(delt.p, by = "State_Plot") %>%
+  left_join(delt.maxv, by = "State_Plot") %>%
+  left_join(delt.minv, by = "State_Plot") %>%
   dplyr::select(-occ.vals) %>%
   filter(pre.temp < 100) %>% 
   left_join(LL, by = "State_Plot")
@@ -40,15 +53,15 @@ occ.dat2 <- occ.dat[which(occ.dat$occ.vals > 0), ] %>%
 spp.labs <- names(occ.dat2 %>% dplyr::select(starts_with("X")))
 
 
-timing.metric <-  c("pre.precip", "post.precip", "pre.temp", "post.temp")
-deltas = c("delta.P", "delta.T")
+timing.metric <-  c("pre.precip", "post.precip", "pre.temp", "post.temp", "pre.vpdmax", "post.vpdmax", "pre.vpdmin", "post.vpdmin")
+deltas = c("delta.P", "delta.T", "delta.Vmax", "delta.Vmin")
 
 
 # Function for examining the occupancy pattern of each species and asking whether the metric (temperature, precipitation) changed significantly from zero, and
 #    if so, how.  This regression takes into account spatial nonindependence.
-spp.slope.fcn <- function(sppX, prepost, deltaTP) {
+spp.slope.fcn <- function(sppX, prepost, deltaTPV) {
   # Gabbing temperature or precip data for a single species where the species was present.  Adding lat/lon because this will be changed into a spatial data frame.
-  sp.X <- occ.dat2 %>% dplyr::select(prepost, deltaTP, all_of(sppX), LAT, LON) %>% filter(get(sppX) > 0) %>%
+  sp.X <- occ.dat2 %>% dplyr::select(all_of(prepost), deltaTPV, all_of(sppX), LAT, LON) %>% filter(get(sppX) > 0) %>%
     mutate(mean_val = get(prepost) - mean(get(prepost)))  # Want to center the independent var so that the intercept may be interpreted.
   
   x.min <- min(sp.X[, 1])   # min and max values for plotting
@@ -61,16 +74,16 @@ spp.slope.fcn <- function(sppX, prepost, deltaTP) {
   proj4string(sp.shp) <- CRS("+proj=longlat +datum=WGS84")
   
   # Linear models
-  x.lm1 <- lm(get(deltaTP) ~ 1, data = sp.shp)        
-  x.lm2 <- lm(get(deltaTP) ~ mean_val, data = sp.shp)
+  x.lm1 <- lm(get(deltaTPV) ~ 1, data = sp.shp)        
+  x.lm2 <- lm(get(deltaTPV) ~ mean_val, data = sp.shp)
   
   # Spatial error (moving average) model
   nbG <- graph2nb(gabrielneigh(sp.shp), sym = TRUE)   # Setting up a neighborhood of points via a Gabriel graph, a version of Delaunay triangulation 
   #     see: ?gabrielneigh, wikipedia: Gabriel graph
   lw <- nb2listw(nbG)                         # Spatial weights for neighbors list
   
-  m1e <- errorsarlm(get(deltaTP) ~ 1, data = sp.shp, lw, tol.solve = 1.0e-30)  # First spatial error regression, model of the mean.
-  m2e <- errorsarlm(get(deltaTP) ~ mean_val, data = sp.shp, lw, tol.solve = 1.0e-30)  # Second spatial error regression, has a slope for first/second visit metric
+  m1e <- errorsarlm(get(deltaTPV) ~ 1, data = sp.shp, lw, tol.solve = 1.0e-30)  # First spatial error regression, model of the mean.
+  m2e <- errorsarlm(get(deltaTPV) ~ mean_val, data = sp.shp, lw, tol.solve = 1.0e-30)  # Second spatial error regression, has a slope for first/second visit metric
   
   mod.list <- list(x.lm1, x.lm2, m1e, m2e)   # Collect models
   
@@ -101,26 +114,22 @@ spp.slope.fcn <- function(sppX, prepost, deltaTP) {
 ##    The loop provides values for all visit 1 data and visit 2 data for both changes in temperature and precipitation and saves the summaries as rds files.  
 y <- Sys.time() 
 
-for (i in 1:length(deltas)) {  
-  for (j in 1:(length(timing.metric)/2)) {
+for (i in 1:length(deltas)) {       
+  for (j in 1:2) {              # pre/post
 
 
-  
-deltaTP = deltas[i]    # Don't need combination of delta.T and pre.precip.
-    if (deltaTP == "delta.P") {
-      prepost <- timing.metric[j]
-    } else {
-      prepost <- timing.metric[j + 2]
-    }
+deltaTPV = deltas[i]    # Don't need combination of delta.T and pre.precip.
+prepost <-  timing.metric[(i - 1) * 2 + j] 
+    
     
     # Setting up the parallel processing using all computer cores minus one.
     no_cores <- detectCores(logical = TRUE)  # returns the number of available hardware threads, and if it is FALSE, returns the number of physical cores
     cl <- makeCluster(no_cores - 1 )  
-    clusterExport(cl, varlist = c("spp.labs", "occ.dat2", "prepost", "deltaTP"))  # Sending along variables to each cluster.
+    clusterExport(cl, varlist = c("spp.labs", "occ.dat2", "prepost", "deltaTPV"))  # Sending along variables to each cluster.
     clusterEvalQ(cl, c(library(dplyr), library(sp), library(spdep), library(spatialreg))) # each cluster loads the necessary libraries
     
-    # pre.temp.out <- as.matrix(sapply(spp.labs, spp.slope.fcn, prepost = "pre.temp", deltaTP = "delta.T"))
-    pre.temp.out <- parSapply(cl, spp.labs, FUN = spp.slope.fcn, prepost = prepost, deltaTP = deltaTP)  # This is the cluster call
+    # pre.temp.out <- as.matrix(sapply(spp.labs, spp.slope.fcn, prepost = "pre.temp", deltaTPV = "delta.T"))
+    pre.temp.out <- parSapply(cl, spp.labs, FUN = spp.slope.fcn, prepost = prepost, deltaTPV = deltaTPV)  # This is the cluster call
     stopCluster(cl)
     
     # Gathering and saving the output.
@@ -142,7 +151,7 @@ deltaTP = deltas[i]    # Don't need combination of delta.T and pre.precip.
                    int.alone.est = unlist(pre.temp.out[11, ]),
                    int.alone.p = unlist(pre.temp.out[12, ]))
     
-    write_rds(pto2, paste0(metric.chng.res.loc, "SpatialLM_", prepost, "_", deltaTP, ".rds"))
+    write_rds(pto2, paste0(metric.chng.res.loc, "SpatialLM_", prepost, "_", deltaTPV, ".rds"))
     
     
   }

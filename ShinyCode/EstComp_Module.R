@@ -27,7 +27,9 @@ EstComp_UI <- function(id) {
                                                      selected = 1)),
                     fluidRow(width = 12, selectInput(NS(id, "metric1"), label = h5("Select analysis metric"),
                                                      choices = list("Precipitation" = 1, 
-                                                                    "Temperature" = 2))),
+                                                                    "Temperature" = 2,
+                                                                    "Maximum Vapor Pressure Deficit" = 3,
+                                                                    "Minimum Vapor Pressure Deficit" = 4))),
                     fluidRow(width = 12, selectInput(NS(id, "time1"), label = h5("Select time perspective"),
                                                      choices = list("First visit" = 1,
                                                                     "Second visit" = 2))),
@@ -40,7 +42,9 @@ EstComp_UI <- function(id) {
                                                                      selected = 2)),
                                     fluidRow(width = 12, selectInput(NS(id, "metric2"), label = h5("Select analysis metric"),
                                                                      choices = list("Precipitation" = 1, 
-                                                                                    "Temperature" = 2))),
+                                                                                    "Temperature" = 2, 
+                                                                                    "Maximum Vapor Pressure Deficit" = 3,
+                                                                                    "Minimum Vapor Pressure Deficit" = 4))),
                                     fluidRow(width = 12, selectInput(NS(id, "time2"), label = h5("Select time perspective"),
                                                                      choices = list("First visit" = 1,
                                                                                     "Second visit" = 2))))
@@ -109,10 +113,10 @@ EstComp_Server <- function(id) {
     output$plot_estcomp <- renderPlot({
       
       o.n.sel <- o.n.[as.numeric(input$occ.num)]
-      p.t.sel1 <- p.t.[as.numeric(input$metric1)]
+      p.t.v.sel1 <- p.t.v.[as.numeric(input$metric1)]
       e.bs.sel1 <- e.bs[as.numeric(input$est.bs1)] 
       t.sel1 <- as.numeric(input$time1)
-      p.t.sel2 <- p.t.[as.numeric(input$metric2)]
+      p.t.v.sel2 <- p.t.v.[as.numeric(input$metric2)]
       e.bs.sel2 <- e.bs[as.numeric(input$est.bs2)] 
       t.sel2 <- as.numeric(input$time2)      
       
@@ -121,21 +125,21 @@ EstComp_Server <- function(id) {
       resp.name <- c("temactmean", "mean")
       
       # See dataprep function in functions.r
-      r1 <- fia.dataprep.fcn(o.n.sel, p.t.sel1, t.sel1, e.bs.sel1) %>% arrange(desc(response))
+      r1 <- fia.dataprep.fcn(o.n.sel, p.t.v.sel1, t.sel1, e.bs.sel1) %>% arrange(desc(response))
       
       r1.order <- r1 %>% dplyr::select(Spp.symbol) %>%
         mutate(order = seq(1:n()))
       
-      r2 <- fia.dataprep.fcn(o.n.sel, p.t.sel2, t.sel2, e.bs.sel2) %>%
+      r2 <- fia.dataprep.fcn(o.n.sel, p.t.v.sel2, t.sel2, e.bs.sel2) %>%
         left_join(r1.order, by = "Spp.symbol") %>%
         arrange(order)
       
-      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", o.n.sel, p.t.sel1, t.sel1))]]
-      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", o.n.sel, p.t.sel2, t.sel2))]]
+      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", o.n.sel, p.t.v.sel1, t.sel1))]]
+      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", o.n.sel, p.t.v.sel2, t.sel2))]]
       
       # Setting up title for each plot
       title.o.n <- c("Range shift, ", "Density shift, ")
-      title.p.t <- c("precipitation, ", "temperature, ")
+      title.p.t <- c("precipitation, ", "temperature, ", "maximum vapor pressure deficit", "minimum vapor pressure deficit")
       title.time <- c("first visit, ", "second visit, ")
       title.e.bs <- c("TSE estimate", "bootstrap estimate")
       plt1.title <- paste0(title.o.n[as.numeric(input$occ.num)], title.p.t[as.numeric(input$metric1)], "\n",
@@ -144,7 +148,7 @@ EstComp_Server <- function(id) {
                            title.time[as.numeric(input$time2)], title.e.bs[as.numeric(input$est.bs2)])
       
       # Setting up labels for x axes
-      plt.x.ax <- c("Difference in precipitation (mm)", "Difference in temperature (C)")
+      plt.x.ax <- c("Difference in precipitation (mm)", "Difference in temperature (C)", "Difference in maximum VPD, hPa", "Difference in minimum VPD, hPa")
       plt1.x.ax <- plt.x.ax[as.numeric(input$metric1)]
       plt2.x.ax <- plt.x.ax[as.numeric(input$metric2)]      
       

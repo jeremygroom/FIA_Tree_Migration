@@ -4,6 +4,7 @@
 
 
 ## Libraries ##
+library(plyr)
 library(tidyverse)
 library(shiny)
 library(shinyjs)  # allows toggleState function

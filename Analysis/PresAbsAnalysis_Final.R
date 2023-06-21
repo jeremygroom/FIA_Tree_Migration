@@ -38,16 +38,16 @@ loadfonts(device = 'win')
 
 
 
-for (x in 1:2) {
+for (x in 1:4) {
   for (y in 1:2) {
     
 ############## 
 # -- some constants
 
-    resp.vars <- c("Temp", "annpre")
+  resp.vars <- c("Temp", "annpre", "smrmaxvpd", "smrminvpd")
     
 # The SELECT.VAR constant will be used to create data with only the selected variable and save output with that variable name.
-SELECT.VAR <- resp.vars[x] # Variables = "Temp", "annpre", "decmint", "augmaxt", "smrmnvpd"
+SELECT.VAR <- resp.vars[x] # Variables = "Temp", "annpre", "decmint", "augmaxt", "smrmaxvpd", "smrminvpd"
 #   For         Mean Temp, Annual Precip, December Min Temp, August Max Temp, Summer Vapor Pressure Deficit
 RESP.TIMING <- y # 1 #2  # For which visit (1st or 2nd) do we want the predicted temperature or precipitation values?
 
@@ -61,7 +61,7 @@ LOC <- "Data/"  # Where the data are stored.
 
     # Obtaining the response value, whether it be temperature or precipitation values from the first or second visit,
    #     as determined by the regression on the previous 10 years.
-resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip."), "1st.2nd.csv")) %>%
+resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip.", "smrmaxvpd" = "vpdmax.", "smrminvpd" = "vpdmin."), "20.10.csv")) %>%  #"1st.2nd.csv")) %>%
   select(c(1:3, RESP.TIMING + 3)) 
 colnames(resp.values)[4] <- "response"
 v1 <- resp.values[, 4]
@@ -88,9 +88,9 @@ colnames(revis)[13] <- SELECT.VAR
 x1 <- orig[is.na(get(SELECT.VAR, orig)) == TRUE,  ]
 sum(apply(x1[, 14:63], 1, sum))
 which(apply(x1[, 14:63], 1, sum) > 0) # 952 1484
-x1[897, ]  # Identified earlier.  STATECD = 53, PLOT_FIADB = 97917
-#x1[952, ]  # Identified earlier.  STATECD = 53, PLOT_FIADB = 97917
-#x1[1484,]  # STATECD = 53, PLOT_FIADB = 53851  Spp = 263, 351
+x1[897, ]  # Identified earlier.  STATECD = 53, PLOT_FIADB = 97917  # Water
+#x1[952, ]  # Identified earlier.  STATECD = 53, PLOT_FIADB = 97917  # Non-forest
+#x1[1484,]  # STATECD = 53, PLOT_FIADB = 53851  Spp = 263, 351       # Forest
 
 x2 <- revis[is.na(get(SELECT.VAR, revis)) == TRUE,  ] # Same two sites as before
 sum(apply(x2[, 14:63], 1, sum))
@@ -98,6 +98,8 @@ which(apply(x2[, 14:63], 1, sum) > 0) # only 1484, STATECD = 53 PLOT_FIADB = 538
 
 #####--- THESE POINTS MUST HAVE PRISM DATA FOR THEM FOR THE FINAL ANALYSIS --- #######
 orig[orig$STATECD == 53 & orig$PLOT_FIADB == 97917, 14:63] <- 0   # Setting species value to zero because it is non-forested (coastal)
+orig[orig$STATECD == 53 & orig$PLOT_FIADB == 53851, 14:63] <- 0   # Setting species values to zero because we are lacking initial visit plot info
+revis[revis$STATECD == 53 & revis$PLOT_FIADB == 53851, 14:63] <- 0   # Setting species values to zero because we are lacking initial visit plot info
 
 
 # The PRISM data manipulation introduced NAs.  Changing those to zeros.  
@@ -251,7 +253,7 @@ sumtaylor <- tibble(sppname = ordered.spp$Common_Name, spp.codes = ordered.spp$s
 
 
 
-write_csv(sumtaylor,paste0(RES, 'sumtaylor_occ_', SELECT.VAR, '_', RESP.TIMING, '.csv'))
+write_csv(sumtaylor,paste0(RES, 'sumtaylor_', SELECT.VAR, '_', RESP.TIMING, '.csv'))
 
 
 #################################################################################
@@ -339,7 +341,7 @@ bs.results2 <- tibble(sppname = ordered.spp$Common_Name, spp.codes = ordered.spp
 
 
 write_csv(bs.results2,paste0(RES, "bs.results2_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
-bs.results2 <- read_csv(paste0(RES, "bs.results2_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
+#bs.results2 <- read_csv(paste0(RES, "bs.results2_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
 
 
 ### Grand mean using GLS  ###
@@ -384,7 +386,7 @@ fia.dataprep.fcn <- function(results.file) {
   rX
 }
 
-r1 <- fia.dataprep.fcn(paste0(RES, "sumtaylor_occ_", SELECT.VAR, "_", RESP.TIMING, ".csv")) %>% filter(spp.codes != 768) %>%
+r1 <- fia.dataprep.fcn(paste0(RES, 'sumtaylor_', SELECT.VAR, '_', RESP.TIMING, '.csv')) %>% filter(spp.codes != 768) %>%
   arrange(desc(temactmean))
 r1.order <- r1 %>% select(Spp.symbol) %>%
   mutate(order = seq(1:n()))
@@ -411,7 +413,7 @@ colnames(r1)[7] <- "temactmean"
 
 bs.plot.fcn <- function(data1, meanvalue, savename, gls.col, titletxt, xaxistxt, ylabtxt, keepy){
   ggplot(data1, aes(factor(xaxistxt, levels = xaxistxt), meanvalue)) +   # fct_reorder allows for reording the factor level (forecats in tidyverse)
-    geom_hline(yintercept = 0, size = 0.1) + 
+    geom_hline(yintercept = 0, linewidth = 0.1) + 
     geom_linerange(aes(y = meanvalue, ymin = LCI, ymax = UCI)) +
     geom_point(shape = 21,  aes(fill = factor(sig))) +
     scale_fill_manual(values = c("white", "black")) + 
@@ -505,21 +507,6 @@ all.spp <- read_xlsx(paste0(LOC, "FullSppNames.xlsx")) %>%
 not.used.spp <- all.spp[is.na(all.spp$n1) == T,]
 
 write_csv(not.used.spp, paste0(RES, "NotUsedSpp_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))  # The column n1 is fairly arbitrary - the point is that there were no data, so it receives an NA
-
-
-### Probability of obtaining 5 (or 8) significant species given 49 spp
-p <- 0.5
-n.sp <- nrow(r1)
-
-
-prob.df <- tibble(type = c("Estimate", "Bootstrap"),
-                  n = c(n.sp, n.sp), 
-                  n.sig = c(sum(r1$sig), sum(r2$sig)),
-                  prob.sig = c(1 - pbinom(sum(r1$sig), n.sp, 0.05),
-                               1 - pbinom(sum(r2$sig), n.sp, 0.05)))
-
-write_csv(prob.df, paste0(RES, "ProbSig_" , SELECT.VAR, "_", RESP.TIMING, ".csv"))
-
 
 
 

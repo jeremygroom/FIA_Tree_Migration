@@ -9,10 +9,10 @@ metric.chng.res.loc <- "Results/MetricChange_Results/"
 
 ## Setting up a rather deep loop to gather all estimate and bootstrap outputs plus the GLS CI output
 o.n. <- c("occ.", "num.")
-p.t. <- c("p", "t")
+p.t.v. <- c("p", "t", "v_x", "v_n")
 e.bs <- c("e", "bs")
 o.n.folder <- c("Occ_Results/", "TreeNum_Results/")
-p.t.folder <- c("annpre", "Temp")
+p.t.v.folder <- c("annpre", "Temp", "smrmaxvpd", "smrminvpd")
 e.bs.file <- c("sumtaylor_", "bs.results2_")  
 timing <- 1:2
 
@@ -23,19 +23,19 @@ names.dat1 <- NULL
 gls1 <- list(NULL)
 names.gls1 <- NULL
 for (i in 1:length(o.n.)) {             # Occupancy vs. tree number analyses
-  for (j in 1:length(p.t.)) {           # Precip vs. temperature
+  for (j in 1:length(p.t.v.)) {           # Precip vs. temperature
     for (k in 1:2) {                    # Timing (1 = use initial 10 yrs, 2 = use second 10 yrs)
       for (l in 1:length(e.bs)) {       # Taylor-series expansion estimation vs. bootstrap
-        fileX <- paste0("Results/", o.n.folder[i], p.t.folder[j], k, "/", e.bs.file[l], p.t.folder[j], "_", timing[k], ".csv")
+        fileX <- paste0("Results/", o.n.folder[i], p.t.v.folder[j], k, "/", e.bs.file[l], p.t.v.folder[j], "_", timing[k], ".csv")
         datX <- read_csv(fileX, show_col_types = FALSE) %>% filter(spp.codes != 768)  # Removing bitter cherry
         dat1 <- append(dat1, list(datX))
-        names.dat1 <- c(names.dat1, paste0(o.n.[i], p.t.[j], timing[k], ".", e.bs[l]))
+        names.dat1 <- c(names.dat1, paste0(o.n.[i], p.t.v.[j], timing[k], ".", e.bs[l]))
         
         if (l == 2) next                   # The result is the same for estimation vs. bootstrap estimation, so skip if already done once.
-        fileX.gls <-  paste0("Results/", o.n.folder[i], p.t.folder[j], k, "/gls_", p.t.folder[j], "_", timing[k], ".csv")
+        fileX.gls <-  paste0("Results/", o.n.folder[i], p.t.v.folder[j], k, "/gls_", p.t.v.folder[j], "_", timing[k], ".csv")
         glsX <- read_csv(fileX.gls, show_col_types = FALSE)
         gls1 <- append(gls1, list(glsX))
-        names.gls1 <- c(names.gls1, paste0("gls.", o.n.[i], p.t.[j], timing[k]))
+        names.gls1 <- c(names.gls1, paste0("gls.", o.n.[i], p.t.v.[j], timing[k]))
       }
     }
   }
@@ -55,13 +55,20 @@ counties <- map_data("county")
 west_county <- subset(counties, region == "california" | region == "oregon" | region == "washington")
 
   # Load temp/precip/latlong for all used points.
-PR1.2. <- read_csv("Data/precip.1st.2nd.csv", show_col_types = FALSE) 
+PR1.2. <- read_csv("Data/precip.20.10.csv", show_col_types = FALSE)   # precip.1st.2nd.csv
+TMP1.2. <- read_csv("Data/tmp.20.10.csv", show_col_types = FALSE)   
+VPDmax1.2. <- read_csv("Data/vpdmax.20.10.csv", show_col_types = FALSE)   
+VPDmin1.2. <- read_csv("Data/vpdmin.20.10.csv", show_col_types = FALSE)   
+lst.df <- list(PR1.2. = PR1.2., TMP1.2. = TMP1.2., 
+               VPDmax1.2. = VPDmax1.2., VPDmin1.2. = VPDmin1.2.)
 LL <- read_csv("Data/PlotLatLon.csv", show_col_types = FALSE) %>% dplyr::select(-n)
-TC1.2. <- read_csv("Data/tmp.1st.2nd.csv", show_col_types = FALSE) %>%  # All precipitation and temperature data.
-  left_join(PR1.2., by = c("STATECD", "PLOT_FIADB", "INVYR")) %>% 
+TC1.2. <- join_all(dfs = lst.df, by = c("STATECD", "PLOT_FIADB", "INVYR"), type = "left", match = "all") %>%
   mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD)),
          change.temp = post.temp - pre.temp,
-         change.precip = post.precip - pre.precip) %>%
+         change.precip = post.precip - pre.precip, 
+         change.vpdmax = post.vpdmax - pre.vpdmax, 
+         change.vpdmin = post.vpdmin - pre.vpdmin 
+  ) %>%
   left_join(LL, by = "State_Plot") %>%
   dplyr::select(-STATECD, -PLOT_FIADB, -INVYR) %>%
   filter(pre.temp <= 8000)
@@ -96,5 +103,9 @@ spp.absent.gt <- spp.names2 %>% mutate(gt.spp = ifelse(spp.codes %in% spp.gt, 1,
   ch.TempV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.temp_delta.T.rds")) 
   ch.PrecipV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.precip_delta.P.rds")) 
   ch.PrecipV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.precip_delta.P.rds")) 
+  ch.VPDmaxV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.vpdmax_delta.Vmax.rds")) 
+  ch.VPDmaxV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.vpdmax_delta.Vmax.rds")) 
+  ch.VPDminV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.vpdmin_delta.Vmin.rds")) 
+  ch.VPDminV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.vpdmin_delta.Vmin.rds")) 
   
 
