@@ -88,18 +88,14 @@ colnames(revis)[13] <- SELECT.VAR
 x1 <- orig[is.na(get(SELECT.VAR, orig)) == TRUE,  ]
 sum(apply(x1[, 14:63], 1, sum))
 which(apply(x1[, 14:63], 1, sum) > 0) # 952 1484
-x1[897, ]  # Identified earlier.  STATECD = 53, PLOT_FIADB = 97917  # Water
 #x1[952, ]  # Identified earlier.  STATECD = 53, PLOT_FIADB = 97917  # Non-forest
-#x1[1484,]  # STATECD = 53, PLOT_FIADB = 53851  Spp = 263, 351       # Forest
 
 x2 <- revis[is.na(get(SELECT.VAR, revis)) == TRUE,  ] # Same two sites as before
 sum(apply(x2[, 14:63], 1, sum))
-which(apply(x2[, 14:63], 1, sum) > 0) # only 1484, STATECD = 53 PLOT_FIADB = 53851, spp = 202, 263, 351 
+which(apply(x2[, 14:63], 1, sum) > 0) # nothing
 
 #####--- THESE POINTS MUST HAVE PRISM DATA FOR THEM FOR THE FINAL ANALYSIS --- #######
 orig[orig$STATECD == 53 & orig$PLOT_FIADB == 97917, 14:63] <- 0   # Setting species value to zero because it is non-forested (coastal)
-orig[orig$STATECD == 53 & orig$PLOT_FIADB == 53851, 14:63] <- 0   # Setting species values to zero because we are lacking initial visit plot info
-revis[revis$STATECD == 53 & revis$PLOT_FIADB == 53851, 14:63] <- 0   # Setting species values to zero because we are lacking initial visit plot info
 
 
 # The PRISM data manipulation introduced NAs.  Changing those to zeros.  
