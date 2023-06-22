@@ -200,7 +200,6 @@ Analysis3 <- left_join(Analysis3, resp.values %>% select(-INVYR), by = c("STATEC
 Analysis3 <- Analysis3[, c(1:12, ncol(Analysis3), 13:(ncol(Analysis3) - 1))]
 
 Analysis3 <- Analysis3[Analysis3$PLOT_FIADB != 97917, ]  # Non-forested plot without climate data
-Analysis3 <- Analysis3[Analysis3$PLOT_FIADB != 53851, ]  # This plot is missing information
 
 Analysis3[is.na(Analysis3)] <- 0         # replacing all NA values with 0
 

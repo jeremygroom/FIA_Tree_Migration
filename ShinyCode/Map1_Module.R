@@ -216,7 +216,9 @@ Map1_Server <- function(id) {
       occ.plot.dat <- map.data()$mapdat.out
       num.plot.dat <- map.data()$num.out
       
-
+      if (ncol(occ.plot.dat) == 17) occ.plot.dat <- occ.plot.dat %>% relocate(orig, revis, .after = 17)
+      occ.plot.dat <- occ.plot.dat %>% relocate("State_Plot", .before = 1)
+      
       # Setting up x and y-axis labels.
       prcp1 <- "Precipitation, 1st visit, mm"
       prcp2 <- "Precipitation, 2nd visit, mm"
@@ -234,15 +236,17 @@ Map1_Server <- function(id) {
       lab_order <- c(prcp1, prcp2, delt_prcp, tdc1, tdc2, delt_tdc, vMax1, vMax2, delt_vMax, vMin1, vMin2, delt_vMin)
       
     #if (input$sppname == 3) browser()
-     
+
       change.x.lab <- lab_order[as.numeric(input$xChoice)]
       change.y.lab <- lab_order[as.numeric(input$metric)]
 
       if (input$sppname == "1" | input$sppname == "2" ) {  # "all spp" is selected.
         # Grabbing temperature and precipitation columns, but duplicating them so that if pre.temp is selected, pre.precip will be selected as well. Etc.
         
-        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$xChoice), 1, 2, 11, 3, 4, 10, 5, 6, 12, 7, 8, 13)]) 
-        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 1, 2, 11, 3, 4, 10, 5, 6, 12, 7, 8, 13)])
+        
+        
+        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$xChoice), 2, 3, 11, 4, 5, 10, 6, 7, 12, 8, 9, 13)])
+        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 2, 3, 11, 4, 5, 10, 6, 7, 12, 8, 9, 13)])
         
         # There are so many points that I've gone with geom_hex to summarize the density of points by small area. 
         cplot <- ggplot(occ.plot.dat, aes(get(change.x), get(change.y))) + 
@@ -253,8 +257,8 @@ Map1_Server <- function(id) {
         
         
       } else {
-        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$xChoice), 4, 5, 14, 6, 7, 13, 8, 9, 15, 10, 11, 16)]) 
-        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 4, 5, 14, 6, 7, 13, 8, 9, 15, 10, 11, 16)])
+        change.x <- colnames(occ.plot.dat[switch(as.numeric(input$xChoice), 2, 3, 11, 4, 5, 10, 6, 7, 12, 8, 9, 13)]) 
+        change.y <- colnames(occ.plot.dat[switch(as.numeric(input$metric), 2, 3, 11, 4, 5, 10, 6, 7, 12, 8, 9, 13)])
         
         if (input$occ_num == "1") {  # If occupancy, setting a column of labels for occupancy status, plus defining the plot data and legend name.
           occ.plot.dat$color.code <- ifelse(occ.plot.dat$orig == 1 & occ.plot.dat$revis == 0, "Extirpated", 
@@ -287,17 +291,20 @@ Map1_Server <- function(id) {
     output$abs_change_plot <- renderPlotly({
       plot3.occ.dat <- map.data()$mapdat.out
       plot3.num.dat <- map.data()$num.out
-      #if (input$sppname == 3) browser()
       metric.num <- as.numeric(input$metric)  # Numbers 1:12.  I simplify it here because I use this value a lot in this section.
        
       p3.type <- switch(metric.num,
                         "precip", "precip", "precip", "temp", "temp", "temp",
                         "vpdmax", "vpdmax", "vpdmax", "vpdmin", "vpdmin", "vpdmin")  # type = either precip or temp.
       
-      
+      if (ncol(plot3.occ.dat) == 17) plot3.occ.dat <- plot3.occ.dat %>% dplyr::select(-orig, -revis)
+      plot3.occ.dat <- plot3.occ.dat %>% relocate("State_Plot", .before = 1)
+        
+      #if(input$sppname == 3) browser()
+
       p3.timing <- rep(c("pre.", "post.", "pre."), 4 ) # For the input$metric, people select "first visit", "second visit" or "change".  In this case I set change = first visit.
       #browser()
-      p3.x <- colnames(plot3.occ.dat[switch(metric.num, 1, 2, 1, 3, 4, 3, 5, 6, 5, 7, 8, 7)]) 
+      p3.x <- colnames(plot3.occ.dat[switch(metric.num, 2, 3, 2, 4, 5, 4, 6, 7, 6, 8, 9, 8)]) 
       fvsvfv <- c(", First Visit", ", Second Visit", ", First Visit")
       labs.x.p3 <- c(paste0("Precipitation, mm", fvsvfv), paste0("Temperature, C", fvsvfv),
                      paste0("Maximum VPD, hPa", fvsvfv), paste0("Minimum VPD, hPa", fvsvfv))
@@ -350,7 +357,8 @@ Map1_Server <- function(id) {
         
         dat.to.pto <- switch(as.numeric(input$metric), 
                              ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1,
-                             ch.VPDmaxV1, ch.VPDmaxV2, ch.VPDmaxV1, ch.VPDminV1, ch.VPDminV2, ch.VPDminV1)
+                             ch.VPDmaxV1, ch.VPDmaxV2, ch.VPDmaxV1, ch.VPDminV1, ch.VPDminV2, ch.VPDminV1) %>%
+          filter(spp != "X768")
 
         pto.dat <- pto.fcn(dat.to.pto) %>% mutate(spp = as.numeric(substr(spp, 2, nchar(spp)))) %>%
           left_join(spp.names2 %>% dplyr::select(spp.codes, sel.names), by = c("spp" = "spp.codes"))
@@ -372,7 +380,7 @@ Map1_Server <- function(id) {
         spp.line <- switch(as.numeric(input$metric), 
                            ch.PrecipV1, ch.PrecipV2, ch.PrecipV1, ch.TempV1, ch.TempV2, ch.TempV1,
                            ch.VPDmaxV1, ch.VPDmaxV2, ch.VPDmaxV1, ch.VPDminV1, ch.VPDminV2, ch.VPDminV1) %>% 
-          filter(spp == paste0("X", spp.names2$spp.codes[which(spp.names2$id == as.numeric(input$sppname)) ]))
+          filter(spp != "X768", spp == paste0("X", spp.names2$spp.codes[which(spp.names2$id == as.numeric(input$sppname)) ]))
 #browser()
         spp.line <- spp.line %>% mutate(pred1 = if (is.na(slp.coef)) int.coef else {int.coef + slp.coef * (x.min - center.adj)}, # for some odd reason, the code to create pred1 & 2 wasn't working, so recreated the values here.
                                       pred2 = if (is.na(slp.coef)) int.coef else {int.coef + slp.coef * (x.max - center.adj)})
@@ -380,6 +388,7 @@ Map1_Server <- function(id) {
         
         txt.coef <- paste0("Int = ", round(spp.line$int.coef, 2), sig.astx.fcn(spp.line, "int.p"), "\n",
                            "Slope = ", round(spp.line$slp.coef, 2), sig.astx.fcn(spp.line, "slp.p"))
+        browser()
         
         if (input$occ_num == "1") {   # "1"  = occupancy
           
