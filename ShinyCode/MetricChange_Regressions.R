@@ -1,7 +1,7 @@
 #### Metric Change Code ####
 ## This bit of code determines linear regressions for the change in metric (precipitataion, temperature) 
 ##   for species' occupancy points.  It does this for the independent variables of visit 1 and 2 temperature
-##   and precipitation values.  It takes a while to run (perhaps 4 hours) although it tries to shorten the time
+##   and precipitation values.  It takes a while to run (perhaps 6 hours) although it tries to shorten the time
 ##   with parallel processing.
 ##
 ##   This code is not sourced by the Shiny app, only by the RMarkdown file, so its placement in this folder is for convenience.
@@ -61,7 +61,7 @@ deltas = c("delta.P", "delta.T", "delta.Vmax", "delta.Vmin")
 #    if so, how.  This regression takes into account spatial nonindependence.
 spp.slope.fcn <- function(sppX, prepost, deltaTPV) {
   # Gabbing temperature or precip data for a single species where the species was present.  Adding lat/lon because this will be changed into a spatial data frame.
-  sp.X <- occ.dat2 %>% dplyr::select(all_of(prepost), deltaTPV, all_of(sppX), LAT, LON) %>% filter(get(sppX) > 0) %>%
+  sp.X <- occ.dat2 %>% dplyr::select(all_of(prepost), all_of(deltaTPV), all_of(sppX), LAT, LON) %>% filter(get(sppX) > 0) %>%
     mutate(mean_val = get(prepost) - mean(get(prepost)))  # Want to center the independent var so that the intercept may be interpreted.
   
   x.min <- min(sp.X[, 1])   # min and max values for plotting
@@ -151,7 +151,7 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
                    int.alone.est = unlist(pre.temp.out[11, ]),
                    int.alone.p = unlist(pre.temp.out[12, ]))
     
-    write_rds(pto2, paste0(metric.chng.res.loc, "SpatialLM_", prepost, "_", deltaTPV, ".rds"))
+    write_csv(pto2, paste0(metric.chng.res.loc, "SpatialLM_", prepost, "_", deltaTPV, ".csv"))
     
     
   }

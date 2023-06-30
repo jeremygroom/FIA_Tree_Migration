@@ -297,10 +297,11 @@ Map1_Server <- function(id) {
                         "precip", "precip", "precip", "temp", "temp", "temp",
                         "vpdmax", "vpdmax", "vpdmax", "vpdmin", "vpdmin", "vpdmin")  # type = either precip or temp.
       
-      if (ncol(plot3.occ.dat) == 17) plot3.occ.dat <- plot3.occ.dat %>% dplyr::select(-orig, -revis)
+      
       plot3.occ.dat <- plot3.occ.dat %>% relocate("State_Plot", .before = 1)
-        
-      #if(input$sppname == 3) browser()
+      if (ncol(plot3.occ.dat) == 17) plot3.occ.dat <- plot3.occ.dat %>% relocate(orig, revis, .after = 17)
+      
+      #if(input$sppname == 26) browser()
 
       p3.timing <- rep(c("pre.", "post.", "pre."), 4 ) # For the input$metric, people select "first visit", "second visit" or "change".  In this case I set change = first visit.
       #browser()
@@ -388,7 +389,7 @@ Map1_Server <- function(id) {
         
         txt.coef <- paste0("Int = ", round(spp.line$int.coef, 2), sig.astx.fcn(spp.line, "int.p"), "\n",
                            "Slope = ", round(spp.line$slp.coef, 2), sig.astx.fcn(spp.line, "slp.p"))
-        browser()
+        
         
         if (input$occ_num == "1") {   # "1"  = occupancy
           
@@ -406,7 +407,7 @@ Map1_Server <- function(id) {
             theme_bw()
 #          browser()
           if (input$line == "1") abs.ch <- abs.ch + 
-            geom_segment(aes(x = spp.line$x.min, xend = spp.line$x.max, y = spp.line$pred1, yend = spp.line$pred2), size = 1, color = "grey") +
+            geom_segment(aes(x = spp.line$x.min, xend = spp.line$x.max, y = spp.line$pred1, yend = spp.line$pred2), linewidth = 1, color = "grey") +
             annotate("text", x = 0.9*spp.line$x.max, y = 0.9 * max(get(paste0("change.", p3.type), plot3.occ.dat)), label = txt.coef, size = 3)
 
           ggp.abs.ch <- ggplotly(abs.ch, tooltip = "text")
@@ -426,7 +427,7 @@ Map1_Server <- function(id) {
             theme_bw()
           
           if (input$line == "1") abs.ch <- abs.ch + 
-            geom_segment(aes(x = spp.line$x.min, xend = spp.line$x.max, y = spp.line$pred1, yend = spp.line$pred2), size = 1, color = "grey") +
+            geom_segment(aes(x = spp.line$x.min, xend = spp.line$x.max, y = spp.line$pred1, yend = spp.line$pred2), linewidth = 1, color = "grey") +
             annotate("text", x = 0.9*spp.line$x.max, y = 0.9 * max(get(paste0("change.", p3.type), plot3.occ.dat)), label = txt.coef, size = 3)  
           
           ggp.abs.ch <- ggplotly(abs.ch, tooltip = "text")
@@ -452,9 +453,9 @@ Map1_Server <- function(id) {
                           "vpdmax", "vpdmax", "vpdmax", "vpdmin", "vpdmin", "vpdmin")
       labs.x.hist <- switch(hist.type,                                            # Set y labels
                             "precip" = "Precipitation Change, mm", "temp" = "Temperature Change, C",
-                            "maxvpd" = "Maximum VPD, hPa", "minvpd" = "Minimum VPD, hPa")
+                            "vpdmax" = "Change in Maximum VPD, hPa", "vpdmin" = "Change in Minimum VPD, hPa")
       
-      
+#      if(metric.num == 7) browser()
       if (input$sppname == "1" | input$sppname == "2") {
         
         hist.plt <- ggplot(hist.occ.dat, aes(get(paste0("change.", hist.type)))) +
