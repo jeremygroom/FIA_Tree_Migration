@@ -12,6 +12,7 @@ knitr::knit_hooks$set(inline = function(x) {   if (!is.numeric(x)) {x} else { pr
 
 
 ```{r libraries.to.load}
+library(plyr)
 library(tidyverse)
 library(grid)
 library(gridExtra)
@@ -36,257 +37,298 @@ data.file.loc <- "Data/"
 ms.file.loc <- "Manuscript/" 
 occ.temp.res.loc <- "Results/Occ_Results/Temp1/"
 occ.precip.res.loc <- "Results/Occ_Results/annpre1/"
+occ.maxvpd.res.loc <- "Results/Occ_Results/maxvpd1/"
+occ.minvpd.res.loc <- "Results/Occ_Results/minvpd1/"
 num.temp.res.loc <- "Results/TreeNum_Results/Temp1/"
 num.precip.res.loc <- "Results/TreeNum_Results/annpre1/"
+num.maxvpd.res.loc <- "Results/TreeNum_Results/maxvpd1/"
+num.minvpd.res.loc <- "Results/TreeNum_Results/minvpd1/"
+
+
 metric.chng.res.loc <- "Results/MetricChange_Results/"
-  
- # For the metric change analysis, loading correct files for precipitation and temperature
+
+# For the metric change analysis, loading correct files for precipitation and temperature
 prepost2_temp <- "pre.temp"
 deltaTP2_temp <- "delta.T"
 
 prepost2_precip <- "pre.precip"
 deltaTP2_precip <- "delta.P"
 
+prepost2_maxvpd <- "pre.vpdmax"
+deltaTP2_maxvpd <- "delta.Vmax"
 
-
+prepost2_minvpd <- "pre.vpdmin"
+deltaTP2_minvpd <- "delta.Vmin"
 
 ```
 
 
 ```{r load_data}
-source("ShinyCode/global.R")
-source("ShinyCode/functions.r")
-
-total.plots <- read_csv(paste0(data.file.loc, "plot052120.csv"))
-oo.sum <- apply(occ_orig[, 3:ncol(occ_orig)], 1, sum) # Sum of all used tree spp occupancy codes across first-visit plots
-or.sum <- apply(occ_revis[, 3:ncol(occ_revis)], 1, sum) # Sum of all used tree spp occupancy codes across second-visit plots
-occ_total <- oo.sum + or.sum        # Combining first & second visit occupancy codes to determine how many plots were occupied by >= 1 of our species.
-
-    # For Table 1, calculating the number of sites that stayed occupied or became extirpated or colonized.
-occ_minus <- occ_orig[3:52] - occ_revis[3:52]     # -1 = colonized, +1 = extirpated
-n.colonized <- apply(occ_minus, 2, function(x) length(x[x == -1]))
-n.extir <- apply(occ_minus, 2, function(x) length(x[x == 1]))
-occ_plus <- occ_orig[3:52] + occ_revis[3:52]      # 2 = occupied both visits
-n.nochange <- apply(occ_plus, 2, function(x) length(x[x == 2]))
-occ.chng <- tibble(SPCD = as.numeric(substr(names(occ_orig[3:52]), 2, nchar(occ_orig[3:52]))), n.nochange, n.extir, n.colonized)
-
-
-tot.num.gt.lt <- read_csv(paste0(data.file.loc, "Total.Num.GT.LT.csv"))          # Used for greater than/less than numbers of trees in plot for Table 1.
-not.used.spp <- read_csv(paste0(occ.temp.res.loc, "NotUsedSpp_Temp_1.csv"))   %>%                   # For Table 1, species not included in the analysis
-  filter(SciName != "Prunus spp.", SciName != "Salix spp.", SciName != "Tree unknown")
-  # Temperature range-shift (occupancy) results
-occ.results.t <- dat1$occ.t1.e %>% 
-  mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
-         warmer = ifelse(LCI > 0 & UCI > 0, 1, 0))
- # Precipitation range-shift results
-occ.results.p <- dat1$occ.p1.e %>% 
-  mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
-         wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
- # Summer VPD range-shift results
-occ.results.s
-
-  # Temperature density (number) results
-num.results.t <- dat1$num.t1.e %>% 
-  mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
-         warmer = ifelse(LCI > 0 & UCI > 0, 1, 0))
-
-  # Precipitation density results
-num.results.p <- dat1$num.p1.e %>% 
-  mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
-         wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
-
-occ.gls.t <- round(gls1$gls.occ.t1, 3)
-occ.gls.p <- round(gls1$gls.occ.p1, 3)
-
-
-num.gls.t <- gls1$gls.num.t1
-num.gls.p <- gls1$gls.num.p1
-
-num.BSresults <- dat1$num.t1.bs %>% 
-  mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
-         warmer = ifelse(LCI > 0 & UCI > 0, 1, 0)) 
-
-#n.num.PlotBSvsEst <- read_csv(paste0(data.file.loc, "/TreeNum_Results/n.num.PlotBSvsEst.csv"))
-
-ml.results <- read_csv(paste0(data.file.loc, "MonleonLintz.csv"))
-
-```
-
-
-```{r prepare_data_outputs}
-total.plot.num <- length(unique(paste0(total.plots$PLOT_FIADB, total.plots$STATECD)))  # This includes intensification plots, which were not used in the 2015 paper
-total.plot.for.num <- length(unique(paste0(total.plots$PLOT_FIADB[total.plots$propfor > 0], total.plots$STATECD[total.plots$propfor > 0])))  # Proportion forested > 0
-
-total.plot.miss.num <- length(unique(paste0(total.plots$PLOT_FIADB[total.plots$propmiss == 1], total.plots$STATECD[total.plots$propmiss == 1])))  # Proportion missed = 1.  Right? about 1k higher than before
-total.plots.occ <- length(occ_total[occ_total != 0])
-
-
-# Table 1
-  # This code combines output from the occupancy and tree number analyses
-t1 <- dat1$occ.p1.e %>% left_join(tot.num.gt.lt, by = c("spp.codes" = "SPCD")) %>%
-  left_join(occ.chng, by = c("spp.codes" = "SPCD")) %>%
-  dplyr::select(SciName, n.nochange, n.extir, n.colonized, n_1, n_3)
-#dplyr::select(SciName, Spp.symbol, n.orig, n.revis, n_1, n_3)
-names(t1) <- c("Species", "Remained Occupied", "Extirpated", "Colonized", "Lost", "Gained")
-t1$Species <- paste0(rep("*", nrow(t1)), t1$Species, rep("*", nrow(t1)))
-write_xlsx(t1, paste0(ms.file.loc, "Table1.xlsx"))
-
-# Related to Table 1
-
-nOccSpp <- nrow(t1)#numbers_to_words(nrow(t1), cap = F, hyphen = F)
-minOccPlots <- min(apply(data.frame(x1 = t1[, 2], x2 = t1[, 2] - t1[, 3] + t1[, 4]), 1, min)  )                  # Minimum number of plots occupied at either time period by any species
-nNtreeSpp <- numbers_to_words(nrow(t1[t1$Lost > 50 & t1$Gained > 50, ]), cap = T)  # Number of tree-number analysis species reported on 
-minNtreePlots <- min(t1[t1$Lost > 50 & t1$Gained > 50, c(5, 6)])  # Minimum number of gained/lost plots used for tree-number analysis of any species 
-
-not.used.spp.vec <- not.used.spp$SciName
-not.used.spp.vec1 <- paste0(not.used.spp.vec[1:(length(not.used.spp.vec) - 1)], collapse = ", ")
-not.used.spp.vec2 <- not.used.spp.vec[length(not.used.spp.vec) ]
-
-# Results Paragraph 1
-
-n.occ.cooler.all <-  numbers_to_words(length(occ.results.t$temSE[occ.results.t$temactmean < 0]), cap = T, hyphen = TRUE)
-n.occ.cooler <- sum(occ.results.t$cooler)
-n.occ.warmer <- sum(occ.results.t$warmer)
-occ.warmer.spp <- paste0(occ.results.t$SciName[occ.results.t$warmer == 1], collapse = ", ")
-occ.cooler.spp <- occ.results.t$SciName[occ.results.t$cooler == 1]
-p.est.occ.t <- round((1 - pbinom((n.occ.cooler + n.occ.warmer), nrow(t1), 0.025)), digits = 3) 
-
-      # New: looking at expected number of false positives if no signal
-
-
-
-# Results Paragraph 2
-
-n.occ.drier.all <-  numbers_to_words(length(occ.results.p$temSE[occ.results.t$temactmean < 0]), cap = F, hyphen = FALSE)
-n.occ.wetter <- sum(occ.results.p$wetter)
-n.occ.drier <- sum(occ.results.p$drier)
-occ.wetter.spp <- paste0(occ.results.p$SciName[occ.results.p$wetter == 1], collapse = ", ")
-occ.drier.spp <- occ.results.p$SciName[occ.results.p$drier == 1]
-p.est.occ.p <- round((1 - pbinom((n.occ.wetter + n.occ.drier), nrow(t1), 0.025)), digits = 3) 
-
-# Results Paragraph 4
-
-n.num.cooler <- sum(num.results.t$cooler)
-n.num.warmer <- sum(num.results.t$warmer)
-num.warmer.spp <- num.results.t$SciName[num.results.t$warmer == 1]
-num.cooler.spp <- paste0(num.results.t$SciName[num.results.t$cooler == 1], collapse = ", ")
-p.est.num <- round((1 - pbinom((n.num.cooler + n.num.warmer), nrow(num.results.p), 0.025)), digits = 3) 
-num.gls.t <- round(num.gls.t, 3) 
-
-# Results Paragraph 5
-
-n.num.drier.all <- numbers_to_words(length(num.results.p$temSE[num.results.t$temactmean < 0]), cap = F, hyphen = FALSE)
-n.num.wetter <-  sum(num.results.p$wetter)
-n.num.drier <- sum(num.results.p$drier)
-num.wetter.spp <- num.results.p$SciName[num.results.p$wetter == 1]
-num.drier.spp <- paste0(num.results.p$SciName[num.results.p$drier == 1], collapse = ", ")
-p.est.num <- round((1 - pbinom((n.num.wetter + n.num.drier), nrow(num.results.p), 0.025)), digits = 3) 
-num.gls.p <- round(num.gls.p, 2) 
-
-# Results Paragraph 6
-n.num.sig <- length(num.results.t$SciName[num.results.t[, 11:12] == 1])
-
-# Original (now removed) Table 2 of comparisons with Monleon & Lintz 2015.  The code is still used for certain comparisons
-occ1 <- occ.results.t %>% select(SciName, temactmean, cooler, warmer) %>% 
-  mutate(Range.occ = ifelse(temactmean < 0, "Cool", "Warm"),
-         sig.occ = ifelse(cooler == 1 | warmer == 1, 1, 0)) %>% select(-temactmean, -cooler, -warmer) %>%
-#occ2 <- occ.BSresults %>% select(SciName, mean, cooler, warmer) %>%   
-#  mutate(RangeBS = ifelse(mean < 0, "Cool", "Warm"),
-#         sig.occBS = ifelse(cooler == 1 | warmer ==1, 1, 0)) %>% select(-mean, -cooler, -warmer)
-#occ3 <- left_join(occ1, occ2, by = "SciName") %>%
-  mutate(Range = ifelse(sig.occ == 1 , paste0("**", Range.occ, "**"), Range.occ)) %>%
-#                        ifelse(sig.occ == 0 & sig.occBS ==1, paste0("***", Range.occ, "***"), Range.occ) )) %>%
-  select(SciName, Range)
-
-num1 <- num.results.t %>% select(SciName, temactmean, cooler, warmer) %>% 
-  mutate(Number.num = ifelse(temactmean < 0, "Cool", "Warm"),
-         sig.num = ifelse(cooler == 1 | warmer == 1, 1, 0)) %>% select(-temactmean, -cooler, -warmer) %>%
-#num2 <- num.BSresults %>% select(SciName, mean, cooler, warmer) %>%   
-#  mutate(NumberBS = ifelse(mean < 0, "Cool", "Warm"),
-#         sig.numBS = ifelse(cooler == 1 | warmer ==1, 1, 0)) %>% select(-mean, -cooler, -warmer)
-#num3 <- left_join(num1, num2, by = "SciName") %>%
-  mutate(Density = ifelse(sig.num == 1, paste0("**", Number.num, "**"), Number.num)) %>%
-#                        ifelse(sig.num == 0 & sig.numBS ==1, paste0("***", Number.num, "***"), Number.num) )) %>%
-  select(SciName, Density)
-
-tree.type <- ml.results %>% select(Species, Type)
-ml1 <- ml.results %>% select(Species, "Life Stage", sig) %>%
-  drop_na() %>%
-  mutate(`Life Stage` = ifelse(sig == 1, paste0("**", `Life Stage`, "**"), `Life Stage`)) %>%
-  select(-sig)
-t2 <- full_join(occ1, num1, by = "SciName")
-t2 <- full_join(t2, ml1, by = c("SciName" = "Species"))
-t2 <- full_join(t2, tree.type, by = c("SciName" = "Species"))
-t2[is.na(t2)] <- ""
-t2$SciName <- paste0("*", t2$SciName, "*")
-names(t2)[1] <- "Scientific Name"
-
-range.shift.angio <- length(t2$Type[t2$Range != "" & t2$Type == "Angio"])
-range.shift.gymno <- length(t2$Type[t2$Range != "" & t2$Type == "Gymno"])
-dens.shift.angio <- length(t2$Type[t2$Density != "" & t2$Type == "Angio"])
-dens.shift.gymno <- length(t2$Type[t2$Density != "" & t2$Type == "Gymno"])
-#write_xlsx(t2, paste0(ms.file.loc, "Table2.xlsx"))
-
-
-## Table 2 (previously Table 3) prep
-
-if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds")),
-        file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))) == FALSE) {
-  source("ShinyCode/MetricChange_Regressions.R")  # If this runs (i.e., files are not found) it'll do so for ~ 4 hours.
+## Saved outputs for this chunk as .RData file to speed up processing. ##
+if (file.exists(paste0(ms.file.loc, "ms.dat.prep.RData"))) {
   
-} else if (file.exists(paste0(metric.chng.res.loc, "Table3.csv")) == FALSE) {
-  
-  # If Table 3 isn't found, first, read in the output from the MetricChange_Regressions.R function.  
-  chng.temp <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds"))
-  chng.precip <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))
-  
-  # Next, summarizing those findings for table 3.
-  chng.temp$slope.pos <- ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 > chng.temp$pred1) == TRUE, 1,
-                                ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 < chng.temp$pred1) == TRUE, -1, 0))
-  
-  chng.temp$intercept.pos <- ifelse((chng.temp$int.alone.est > 0) == TRUE , 1, 0)
-  
-  chng.precip$slope.pos <- ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 > chng.precip$pred1) == TRUE, 1,
-                                  ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 < chng.precip$pred1) == TRUE, -1, 0))
-  
-  chng.precip$intercept.pos <- ifelse((chng.precip$int.alone.est > 0) == TRUE , 1, 0)
-  
-  t3.delta.T <- chng.temp %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
-    group_by(factor(intercept.pos, levels = c(1, 0))) %>%
-    summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
-              sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
-              sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
-  
-  t3.delta.P <- chng.precip %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
-    group_by(factor(intercept.pos, levels = c(1, 0))) %>%
-    summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
-              sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
-              sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
-  
-  
-  # Creating the table
-  t3 <- bind_rows(t3.delta.T, t3.delta.P)
-  names(t3) <- c("Metric", "Intercept", "Slope +", "Slope -")
-  t3[, 1] <- c(paste0(c("+", "-", "+", "-"), "$\\Delta$", c("T", "T", "P", "P")))
-  
-  write_csv(t3, paste0(metric.chng.res.loc, "Table3.csv") ) 
+  load(file = paste0(ms.file.loc, "ms.dat.prep.RData"))
   
 } else {
   
-  t3 <- read_csv(paste0(metric.chng.res.loc, "Table3.csv"))
-  t.int.pos <- t3$Intercept[1]
-  p.int.pos <- t3$Intercept[3]
-  p.int.neg <- t3$Intercept[4]
+  source("ShinyCode/global.R")
+  source("ShinyCode/functions.r")
+  
+  total.plots <- read_csv(paste0(data.file.loc, "plot052120.csv"))
+  oo.sum <- apply(occ_orig[, 3:ncol(occ_orig)], 1, sum) # Sum of all used tree spp occupancy codes across first-visit plots
+  or.sum <- apply(occ_revis[, 3:ncol(occ_revis)], 1, sum) # Sum of all used tree spp occupancy codes across second-visit plots
+  occ_total <- oo.sum + or.sum        # Combining first & second visit occupancy codes to determine how many plots were occupied by >= 1 of our species.
+  
+  # For Table 1, calculating the number of sites that stayed occupied or became extirpated or colonized.
+  occ_minus <- occ_orig[3:52] - occ_revis[3:52]     # -1 = colonized, +1 = extirpated
+  n.colonized <- apply(occ_minus, 2, function(x) length(x[x == -1]))
+  n.extir <- apply(occ_minus, 2, function(x) length(x[x == 1]))
+  occ_plus <- occ_orig[3:52] + occ_revis[3:52]      # 2 = occupied both visits
+  n.nochange <- apply(occ_plus, 2, function(x) length(x[x == 2]))
+  occ.chng <- tibble(SPCD = as.numeric(substr(names(occ_orig[3:52]), 2, nchar(occ_orig[3:52]))), n.nochange, n.extir, n.colonized)
+  
+  
+  tot.num.gt.lt <- read_csv(paste0(data.file.loc, "Total.Num.GT.LT.csv"))          # Used for greater than/less than numbers of trees in plot for Table 1.
+  not.used.spp <- read_csv(paste0(occ.temp.res.loc, "NotUsedSpp_Temp_1.csv"))   %>%                   # For Table 1, species not included in the analysis
+    filter(SciName != "Prunus spp.", SciName != "Salix spp.", SciName != "Tree unknown")
+  # Temperature range-shift (occupancy) results
+  occ.results.t <- dat1$occ.t1.e %>% 
+    mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           warmer = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  # Precipitation range-shift results
+  occ.results.p <- dat1$occ.p1.e %>% 
+    mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  # Max VPD range-shift (occupancy) results
+  occ.results.vmax <- dat1$occ.v_x1.e %>% 
+    mutate(lesser = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           greater = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  # Min VPD range-shift results
+  occ.results.vmin <- dat1$occ.v_n1.e %>% 
+    mutate(lesser = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           greater = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  
+  # Temperature density (number) results
+  num.results.t <- dat1$num.t1.e %>% 
+    mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           warmer = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  
+  # Precipitation density results
+  num.results.p <- dat1$num.p1.e %>% 
+    mutate(drier = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  
+  # Max VPD density (number) results
+  num.results.vmin <- dat1$num.v_x1.e %>% 
+    mutate(lesser = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           greater = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  
+  # Min VPD density results
+  num.results.vmax <- dat1$num.v_n1.e %>% 
+    mutate(lesser = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           wetter = ifelse(LCI > 0 & UCI > 0, 1, 0))
+  
+  
+  
+  occ.gls.t <- round(gls1$gls.occ.t1, 3)
+  occ.gls.p <- round(gls1$gls.occ.p1, 3)
+  occ.gls.vmax <- round(gls1$gls.occ.v_x1, 3)
+  occ.gls.vmin <- round(gls1$gls.occ.v_n1, 3)
+  
+  
+  num.gls.t <- gls1$gls.num.t1
+  num.gls.p <- gls1$gls.num.p1
+  num.gls.vmin <- gls1$gls.num.v_x1
+  num.gls.vmax <- gls1$gls.num.v_n1
+  
+  num.BSresults <- dat1$num.t1.bs %>% 
+    mutate(cooler = ifelse(LCI < 0 & UCI < 0, 1, 0),
+           warmer = ifelse(LCI > 0 & UCI > 0, 1, 0)) 
+  
+  #n.num.PlotBSvsEst <- read_csv(paste0(data.file.loc, "/TreeNum_Results/n.num.PlotBSvsEst.csv"))
+  
+  ml.results <- read_csv(paste0(data.file.loc, "MonleonLintz.csv"))
+  
+  
+  
+  ## == prepare_data_outputs == ##
+  
+  total.plot.num <- length(unique(paste0(total.plots$PLOT_FIADB, total.plots$STATECD)))  # This includes intensification plots, which were not used in the 2015 paper
+  total.plot.for.num <- length(unique(paste0(total.plots$PLOT_FIADB[total.plots$propfor > 0], total.plots$STATECD[total.plots$propfor > 0])))  # Proportion forested > 0
+  
+  total.plot.miss.num <- length(unique(paste0(total.plots$PLOT_FIADB[total.plots$propmiss == 1], total.plots$STATECD[total.plots$propmiss == 1])))  # Proportion missed = 1.  Right? about 1k higher than before
+  total.plots.occ <- length(occ_total[occ_total != 0])
+  
+  
+  # Table 1
+  # This code combines output from the occupancy and tree number analyses
+  t1 <- dat1$occ.p1.e %>% left_join(tot.num.gt.lt, by = c("spp.codes" = "SPCD")) %>%
+    left_join(occ.chng, by = c("spp.codes" = "SPCD")) %>%
+    dplyr::select(SciName, n.nochange, n.extir, n.colonized, n_1, n_3)
+  #dplyr::select(SciName, Spp.symbol, n.orig, n.revis, n_1, n_3)
+  names(t1) <- c("Species", "Remained Occupied", "Extirpated", "Colonized", "Lost", "Gained")
+  t1$Species <- paste0(rep("*", nrow(t1)), t1$Species, rep("*", nrow(t1)))
+  write_xlsx(t1, paste0(ms.file.loc, "Table1.xlsx"))
+  
+  # Related to Table 1
+  
+  nOccSpp <- nrow(t1)#numbers_to_words(nrow(t1), cap = F, hyphen = F)
+  minOccPlots <- min(apply(data.frame(x1 = t1[, 2], x2 = t1[, 2] - t1[, 3] + t1[, 4]), 1, min)  )                  # Minimum number of plots occupied at either time period by any species
+  nNtreeSpp <- numbers_to_words(nrow(t1[t1$Lost > 50 & t1$Gained > 50, ]), cap = T)  # Number of tree-number analysis species reported on 
+  minNtreePlots <- min(t1[t1$Lost > 50 & t1$Gained > 50, c(5, 6)])  # Minimum number of gained/lost plots used for tree-number analysis of any species 
+  
+  not.used.spp.vec <- not.used.spp$SciName
+  not.used.spp.vec1 <- paste0(not.used.spp.vec[1:(length(not.used.spp.vec) - 1)], collapse = ", ")
+  not.used.spp.vec2 <- not.used.spp.vec[length(not.used.spp.vec) ]
+  
+  # Results Paragraph 1
+  
+  n.occ.cooler.all <-  numbers_to_words(length(occ.results.t$temSE[occ.results.t$temactmean < 0]), cap = T, hyphen = TRUE)
+  n.occ.cooler <- sum(occ.results.t$cooler)
+  n.occ.warmer <- sum(occ.results.t$warmer)
+  occ.warmer.spp <- paste0(occ.results.t$SciName[occ.results.t$warmer == 1], collapse = ", ")
+  occ.cooler.spp <- occ.results.t$SciName[occ.results.t$cooler == 1]
+  p.est.occ.t <- round((1 - pbinom((n.occ.cooler + n.occ.warmer), nrow(t1), 0.025)), digits = 3) 
+  
+  # New: looking at expected number of false positives if no signal
+#  p1 <- 1- pbinom(7, 30, 0.025)
+  
+  
+  # Results Paragraph 2
+  
+  n.occ.drier.all <-  numbers_to_words(length(occ.results.p$temSE[occ.results.t$temactmean < 0]), cap = F, hyphen = FALSE)
+  n.occ.wetter <- sum(occ.results.p$wetter)
+  n.occ.drier <- sum(occ.results.p$drier)
+  occ.wetter.spp <- paste0(occ.results.p$SciName[occ.results.p$wetter == 1], collapse = ", ")
+  occ.drier.spp <- occ.results.p$SciName[occ.results.p$drier == 1]
+  p.est.occ.p <- round((1 - pbinom((n.occ.wetter + n.occ.drier), nrow(t1), 0.025)), digits = 3) 
+  
+  # Results Paragraph 4
+  
+  n.num.cooler <- sum(num.results.t$cooler)
+  n.num.warmer <- sum(num.results.t$warmer)
+  num.warmer.spp <- num.results.t$SciName[num.results.t$warmer == 1]
+  num.cooler.spp <- paste0(num.results.t$SciName[num.results.t$cooler == 1], collapse = ", ")
+  p.est.num <- round((1 - pbinom((n.num.cooler + n.num.warmer), nrow(num.results.p), 0.025)), digits = 3) 
+  num.gls.t <- round(num.gls.t, 3) 
+  
+  # Results Paragraph 5
+  
+  n.num.drier.all <- numbers_to_words(length(num.results.p$temSE[num.results.t$temactmean < 0]), cap = F, hyphen = FALSE)
+  n.num.wetter <-  sum(num.results.p$wetter)
+  n.num.drier <- sum(num.results.p$drier)
+  num.wetter.spp <- num.results.p$SciName[num.results.p$wetter == 1]
+  num.drier.spp <- paste0(num.results.p$SciName[num.results.p$drier == 1], collapse = ", ")
+  p.est.num <- round((1 - pbinom((n.num.wetter + n.num.drier), nrow(num.results.p), 0.025)), digits = 3) 
+  num.gls.p <- round(num.gls.p, 2) 
+  
+  # Results Paragraph 6
+  n.num.sig <- length(num.results.t$SciName[num.results.t[, 11:12] == 1])
+  
+  # Original (now removed) Table 2 of comparisons with Monleon & Lintz 2015.  The code is still used for certain comparisons
+  occ1 <- occ.results.t %>% select(SciName, temactmean, cooler, warmer) %>% 
+    mutate(Range.occ = ifelse(temactmean < 0, "Cool", "Warm"),
+           sig.occ = ifelse(cooler == 1 | warmer == 1, 1, 0)) %>% select(-temactmean, -cooler, -warmer) %>%
+    #occ2 <- occ.BSresults %>% select(SciName, mean, cooler, warmer) %>%   
+    #  mutate(RangeBS = ifelse(mean < 0, "Cool", "Warm"),
+    #         sig.occBS = ifelse(cooler == 1 | warmer ==1, 1, 0)) %>% select(-mean, -cooler, -warmer)
+    #occ3 <- left_join(occ1, occ2, by = "SciName") %>%
+    mutate(Range = ifelse(sig.occ == 1 , paste0("**", Range.occ, "**"), Range.occ)) %>%
+    #                        ifelse(sig.occ == 0 & sig.occBS ==1, paste0("***", Range.occ, "***"), Range.occ) )) %>%
+    select(SciName, Range)
+  
+  num1 <- num.results.t %>% select(SciName, temactmean, cooler, warmer) %>% 
+    mutate(Number.num = ifelse(temactmean < 0, "Cool", "Warm"),
+           sig.num = ifelse(cooler == 1 | warmer == 1, 1, 0)) %>% select(-temactmean, -cooler, -warmer) %>%
+    #num2 <- num.BSresults %>% select(SciName, mean, cooler, warmer) %>%   
+    #  mutate(NumberBS = ifelse(mean < 0, "Cool", "Warm"),
+    #         sig.numBS = ifelse(cooler == 1 | warmer ==1, 1, 0)) %>% select(-mean, -cooler, -warmer)
+    #num3 <- left_join(num1, num2, by = "SciName") %>%
+    mutate(Density = ifelse(sig.num == 1, paste0("**", Number.num, "**"), Number.num)) %>%
+    #                        ifelse(sig.num == 0 & sig.numBS ==1, paste0("***", Number.num, "***"), Number.num) )) %>%
+    select(SciName, Density)
+  
+  tree.type <- ml.results %>% select(Species, Type)
+  ml1 <- ml.results %>% select(Species, "Life Stage", sig) %>%
+    drop_na() %>%
+    mutate(`Life Stage` = ifelse(sig == 1, paste0("**", `Life Stage`, "**"), `Life Stage`)) %>%
+    select(-sig)
+  t2 <- full_join(occ1, num1, by = "SciName")
+  t2 <- full_join(t2, ml1, by = c("SciName" = "Species"))
+  t2 <- full_join(t2, tree.type, by = c("SciName" = "Species"))
+  t2[is.na(t2)] <- ""
+  t2$SciName <- paste0("*", t2$SciName, "*")
+  names(t2)[1] <- "Scientific Name"
+  
+  range.shift.angio <- length(t2$Type[t2$Range != "" & t2$Type == "Angio"])
+  range.shift.gymno <- length(t2$Type[t2$Range != "" & t2$Type == "Gymno"])
+  dens.shift.angio <- length(t2$Type[t2$Density != "" & t2$Type == "Angio"])
+  dens.shift.gymno <- length(t2$Type[t2$Density != "" & t2$Type == "Gymno"])
+  #write_xlsx(t2, paste0(ms.file.loc, "Table2.xlsx"))
+  
+  
+  ## Table 2 (previously Table 3) prep
+  
+  if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds")),
+          file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))) == FALSE) {
+    source("ShinyCode/MetricChange_Regressions.R")  # If this runs (i.e., files are not found) it'll do so for ~ 4 hours.
+    
+  } else if (file.exists(paste0(metric.chng.res.loc, "Table3.csv")) == FALSE) {
+    
+    # If Table 3 isn't found, first, read in the output from the MetricChange_Regressions.R function.  
+    chng.temp <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds"))
+    chng.precip <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))
+    
+    # Next, summarizing those findings for table 3.
+    chng.temp$slope.pos <- ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 > chng.temp$pred1) == TRUE, 1,
+                                  ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 < chng.temp$pred1) == TRUE, -1, 0))
+    
+    chng.temp$intercept.pos <- ifelse((chng.temp$int.alone.est > 0) == TRUE , 1, 0)
+    
+    chng.precip$slope.pos <- ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 > chng.precip$pred1) == TRUE, 1,
+                                    ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 < chng.precip$pred1) == TRUE, -1, 0))
+    
+    chng.precip$intercept.pos <- ifelse((chng.precip$int.alone.est > 0) == TRUE , 1, 0)
+    
+    t3.delta.T <- chng.temp %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
+      group_by(factor(intercept.pos, levels = c(1, 0))) %>%
+      summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
+                sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
+                sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
+    
+    t3.delta.P <- chng.precip %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
+      group_by(factor(intercept.pos, levels = c(1, 0))) %>%
+      summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
+                sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
+                sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
+    
+    
+    # Creating the table
+    t3 <- bind_rows(t3.delta.T, t3.delta.P)
+    names(t3) <- c("Metric", "Intercept", "Slope +", "Slope -")
+    t3[, 1] <- c(paste0(c("+", "-", "+", "-"), "$\\Delta$", c("T", "T", "P", "P")))
+    
+    write_csv(t3, paste0(metric.chng.res.loc, "Table3.csv") ) 
+    
+  } else {
+    
+    t3 <- read_csv(paste0(metric.chng.res.loc, "Table3.csv"))
+    t.int.pos <- t3$Intercept[1]
+    p.int.pos <- t3$Intercept[3]
+    p.int.neg <- t3$Intercept[4]
+    
+  }
+  
+  #t3.caption = paste0("Table 2. Summary of spatial simultaneous autoregressive error model estimation of changes in plot temperature and precipitation across species' ranges #between the first and second visits (see text). The column Metric is the mean positive or negative (+, -) change in either temperature or precipitation ($\Delta$T, #$\Delta$P).  Intercept is the number of species with significant (p < 0.025) intercept estimates for intercept-only models.  The columns Slope+ and Slope- report the number #of species which were better modeled with positive and negative slope terms, respectively, with the initial visit plot temperature or precipitation value serving as the #model's independent variable.   
+  #")
+  
+  save.image(file = paste0(ms.file.loc, "ms.dat.prep.RData")) 
   
 }
-
-#t3.caption = paste0("Table 2. Summary of spatial simultaneous autoregressive error model estimation of changes in plot temperature and precipitation across species' ranges #between the first and second visits (see text). The column Metric is the mean positive or negative (+, -) change in either temperature or precipitation ($\Delta$T, #$\Delta$P).  Intercept is the number of species with significant (p < 0.025) intercept estimates for intercept-only models.  The columns Slope+ and Slope- report the number #of species which were better modeled with positive and negative slope terms, respectively, with the initial visit plot temperature or precipitation value serving as the #model's independent variable.   
-#")
-
 ```
- 
- 
- 
+
+
+
 ```{r fig.map.generate}
 
 # The forested points distribution map was created as a QGIS project.  I attempted to create a version using R
@@ -295,17 +337,17 @@ if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_"
 #  ("ForestedPts_Fig.png").  If that is missing too, it recreates the figure, saves it, and calls for it.
 
 if (file.exists(paste0(ms.file.loc, "PointDist.png"))) {  # First looking for QGIS map
-forest.pts <-  include_graphics(paste0(ms.file.loc, "PointDist.png"))
+  forest.pts <-  include_graphics(paste0(ms.file.loc, "PointDist.png"))
   
 } else if (file.exists(paste0(ms.file.loc, "ForestedPts_Fig.png"))) {  # Now looking for the R-created map
-forest.pts <-   include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
+  forest.pts <-   include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
   
 } else {   # Now it makes the R map.
   # Finding all forested plots and defining and saving lat/lon.
   total.plots2 <- total.plots %>% mutate(State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
     filter(propfor > 0) %>% 
     dplyr::select(State_Plot)
-                                         
+  
   for.pts <- left_join(total.plots2, TC1.2., by = "State_Plot") %>% 
     dplyr::select(State_Plot, LAT, LON) %>%
     distinct()
@@ -324,7 +366,7 @@ forest.pts <-   include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
   NorAm <- worldmap[worldmap$continent == "North America",]
   NorAm2 <- sf::st_crop(NorAm, xmin = -180, xmax = 0, ymin = 0, ymax = 90)
   
-
+  
   projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
   
   # Box for inset map. Box goes around the west coast states
@@ -372,7 +414,7 @@ forest.pts <-   include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
               width = 0.3, height = 0.4)      
   dev.off()
   
-forest.pts <- include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
+  forest.pts <- include_graphics(paste0(ms.file.loc, "ForestedPts_Fig.png"))
   
 }
 
@@ -382,108 +424,47 @@ forest.pts.caption <- paste0("Figure 1. Distribution of ", formatC(total.plot.fo
 ```
 
 ```{r fig.RangeShift1.generation}
-if (file.exists(paste0(ms.file.loc, "RangeShift_Fig.png"))) {
-range.fig <-  include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
+if (file.exists(paste0(ms.file.loc, "RangeShift_All_Fig1.jpg"))) {
+  range.fig <-  include_graphics(paste0(ms.file.loc, "RangeShift_All_Fig1.jpg"))
 } else {
-
-      # See dataprep function in functions.r
-      r1 <- fia.dataprep.fcn("occ.", "t", "1", "e") %>% arrange(desc(response)) %>% 
-        mutate(SciName2 = paste0("*", SciName, "*"))
-      
-      r1.order <- r1 %>% select(Spp.symbol) %>%
-        mutate(order = seq(1:n()))
-      
-      r2 <- fia.dataprep.fcn("occ.", "p", "1", "e") %>%
-        left_join(r1.order, by = "Spp.symbol") %>%
-        arrange(order)
-      
-      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "t", "1"))]]
-      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "occ.", "p", "1"))]]
-
-      plt1.title <- "Range Shift, Temperature"
-      plt2.title <- "Range Shift, Precipitation"
-        plt1.x.ax <- "Difference in temperature (\u00B0C)"
-        plt2.x.ax <- "Difference in precipitation (mm)" 
-      # Calling on plotting functions from functions.r
-
-        source("ShinyCode/functions.r")
-
-      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 12) 
-      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 12)#1)
-      
-      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
-      ##  Change y-axis of p1 to null
-      q1 <- as.grob(q1)
-      p1 <- as.grob(p1)
-      
-      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
-
-  png(paste0(ms.file.loc, "RangeShift_Fig.png"), width = 7, height = 9, units = "in", res = 300)
-  p_all      
-  dev.off()
   
-range.fig <- include_graphics(paste0(ms.file.loc, "RangeShift_Fig.png"))
+  comp.plt.all.fcn("Range", 1)
+
+  range.fig <- include_graphics(paste0(ms.file.loc, "RangeShift_All_Fig1.jpg"))
   
 }
 
-fig.rangeShift.cap = paste0("Figure 3.  Estimated mean range-shift temperature and precipitation differences between plot measurements for ", nrow(t1), " species.  For temperature and precipitation, mean changes greater than zero indicated that the species’ range was on average warmer or wetter, respectively, during the second visit.  The two plots include a vertical band representing the 95% GLS confidence interval for estimates of overall temperature or precipitation change among species.")
+fig.rangeShift.cap = paste0("Figure 3. Estimated mean range-shift temperature,  precipitation, maximum VPD, and minimum VPD differences between plot measurements for ", nrow(num.results.t), " species.  Mean changes greater than zero indicated that the species’ range was on average warmer, wetter, or had higher VPD values during the second visit.  Plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in climate variable values among species.")
+
+
 ```
 
 
-```{r fig.DensShift1.generation}
-if (file.exists(paste0(ms.file.loc, "DensityShift_Fig.png"))) {
-fig.densShift <- include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
+
+```{r fig.DensityShift.generation}
+if (file.exists(paste0(ms.file.loc, "DensityShift_All_Fig1.jpg"))) {
+  density.fig <-  include_graphics(paste0(ms.file.loc, "DensityShift_All_Fig1.jpg"))
 } else {
 
-      # See dataprep function in functions.r
-      r1 <- fia.dataprep.fcn("num.", "t", "1", "e") %>% arrange(desc(response)) %>% 
-        mutate(SciName2 = paste0("*", SciName, "*"))
-      
-      r1.order <- r1 %>% select(Spp.symbol) %>%
-        mutate(order = seq(1:n()))
-      
-      r2 <- fia.dataprep.fcn("num.", "p", "1", "e") %>%
-        left_join(r1.order, by = "Spp.symbol") %>%
-        arrange(order)
-      
-      gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "t", "1"))]]
-      gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", "num.", "p", "1"))]]
+  comp.plt.all.fcn("Density", 1)
 
-      plt1.title <- "Density Shift, Temperature"
-      plt2.title <- "Density Shift, Precipitation"
-        plt1.x.ax <- "Difference in temperature (\u00B0C)"
-        plt2.x.ax <- "Difference in precipitation (mm)" 
-      # Calling on plotting functions from functions.r
-
-      q1 <- e.c.plot.fcn(r1, "response", gls.vals1, plt1.title, r1$SciName2, plt1.x.ax, NULL, 1, 11) 
-      p1 <- e.c.plot.fcn(r2, "response", gls.vals2, plt2.title, r2$Spp.symbol, plt2.x.ax, NULL, 0, 11)#1)
-      
-      # plotting q1 (estimated mean/var) and p1 (bootstrap mean/var)
-      ##  Change y-axis of p1 to null
-      q1 <- as.grob(q1)
-      p1 <- as.grob(p1)
-      
-      p_all <- plot_grid(q1, p1, ncol = 2, rel_widths = c(1, 0.6))
-
-  png(paste0(ms.file.loc, "DensityShift_Fig.png"), width = 7, height = 8, units = "in", res = 300)
-  p_all      
-  dev.off()
-  
-fig.densShift <- include_graphics(paste0(ms.file.loc, "DensityShift_Fig.png"))
+  density.fig <- include_graphics(paste0(ms.file.loc, "DensityShift_All_Fig1.jpg"))
   
 }
 
-fig.densShift.cap = paste0("Figure 4. Estimated mean temperature and precipitation differences between plots with more and fewer living trees upon the second visit for ", nrow(num.results.t), " species (density shift).  Mean changes greater than zero indicated that more trees for a species were found in warmer/wetter plots (and/or fewer trees were found in cooler/drier plots), on average.  Both plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in plot temperature or precipitation between plots with more and fewer trees.")
+fig.densShift.cap = paste0("Figure 4. Estimated mean temperature,  precipitation, maximum VPD, and minimum VPD differences between plots with more and fewer living trees found on the second visit for ", nrow(num.results.t), " species (density shift).  Mean changes greater than zero indicated that more trees for a species were found in warmer/wetter/higher VPD plots (and/or fewer trees were found in cooler/drier/lower VPD plots), on average.  Both plots include a vertical band representing the 95% GLS confidence interval for estimates of the overall difference in climate variable values between plots with more and fewer trees.")
 
 ```
+
+
 
 
 <br>
 
 <br>      
-   
+
 Jeremiah D. Groom$^1$ and Vicente J. Monleon$^2$          
- 
+
 
 <br>
 
@@ -503,7 +484,7 @@ Jeremiah D. Groom$^1$ and Vicente J. Monleon$^2$
 
 <br>
 
-    
+
 $^1$(Corresponding Author) Groom Analytics, LLC.  1975 SE Crystal Lake Dr., Corvallis, Oregon, 97333, United States of America.  jeremy@groomanalytics.com
 
 $^2$Pacific Northwest Research Station, USDA Forest Service, 3200 SW Jefferson Way, Corvallis, Oregon, 97331, United States of America.  vicente.monleon@usda.gov
@@ -524,7 +505,7 @@ The rate of vegetation change between 2000 BCE and now is faster than during the
 Modeling studies indicate that many tree species' ranges in North America may shift substantially in the coming decades (McKenney et al. 2007, Iverson et al. 2008).  Serra-Diaz et al. (2014) modeled climate-related range shifts for eight oak (*Quercus*) and pine (*Pinus*) species in California over the next 80 years and estimated that range-shift velocities would be affected by terrain, with species inhabiting relatively flat terrain experiencing faster range shifts than those in steep terrain.  Loarie et al. (2009) found the same topographical relationship for the speed of temperature change within biomes, with mountainous biomes shifting on average by 0.08 km/yr while flatter biomes (mangroves, deserts, grasslands) shifting by 1.26 km/yr over the next 80 years.  It is imperative that we determine whether tree species (and others) can shift their ranges with sufficient speed to match the changes underway in their niche space; otherwise, species may face substantial range contractions (McKenny et al. 2007, Iverson et al. 2008) and require management interventions to overcome dispersal barriers.    
 
 Empirically detecting shifts in tree species' distributions and ranges is challenging because programs which collect tree plot data across many years using a geographically widespread and probabilistically-based sample design with consistent measurement protocols are rare.  Sampling designs and data-collection protocols enacted by governments, research institutions, or other organizations may change over time, lack methodological consistency across political boundaries, and/or not sample plots probabilistically.  Consequently, several analytical approaches have been used evaluate evidence of recent tree species range shifts.  
-  
+
 One method compares the distribution of seedlings or saplings relative to adults (Zhu et al. 2012, Monleon and Lintz 2015, Sittaro et al. 2017, Woodall et al. 2013, 2018). The Migration Hypothesis proposed by Zhu et al. (2014) predicts that seedling ranges may shift into previously unoccupied but newly favorable areas and out of regions that have become unsupportive of that life stage. This type of analysis has been done primarily by examining plot occupancy by seedlings or saplings and adult trees within longitudinal strips and estimating means of range limits for each age type. Latitude serves as a proxy for a climate-change signal in these studies, and may be justified as models (McKenney et al. 2007, Iverson et al. 2008) indicate that climate change may be expected to result in northerly range shifts.  However, seedling or saplings and adult tree distributions do not necessarily behave as predicted when analyses of their distributions are performed using revisit data. Sittaro et al. (2017) found evidence of seedling ranges shifting northward at a more rapid pace than adults, but they did not find that seedling ranges extended farther north than the ranges of adults. Woodall et al. (2018) similarly found seedlings south of adults.  Zhu et al. (2014) proposed the Turnover Hypothesis to explain observed patterns: warmer and wetter conditions could increase turnover rates, promoting elevated rates of mortality and recruitment. Their analysis of 65 species in the eastern United States supported the Turnover Hypothesis over the Migration Hypothesis.  Regardless, using the longitudinal strip method, Zhu et al. (2012) and Woodall et al. (2013, 2018) compared differences in the distributions between seedling/sapling and adult populations in the eastern United States but did not find evidence that the ranges of many species were shifting northward (but see Sittaro et al. 2017).     
 
 Another approach for evaluating species’ responses to a changing climate is to quantify distribution shifts within ranges towards more habitable range edges instead of quantifying range edge changes (Kelly and Goulden 2008).  Murphy et al. (2010) and Fei et al. (2017) found shifts in plot abundance and occupancy within tree species’ ranges in the eastern United States northward (Murphy et al.) or northward and/or westward (Fei et al.).  Although these analyses do not capture changes in species geographical extents, they may be more sensitive to initial shifts in distribution. However, observing distributional shifts within ranges instead of shifts in range edges may indicate that a species lacks the ability to adjust to climatic shifts (Liang et al. 2018).  
@@ -622,6 +603,9 @@ range.fig
 
 ```
 
+
+
+
 <br>
 
 For the precipitation range-shift analysis, `r length(occ.results.p$temSE[occ.results.t$temactmean < 0])` species exhibited negative changes between visits which suggests a shift toward previously drier plots. The only species with a 95% confidence interval that did not overlap zero was the Port Orford cedar, *`r occ.wetter.spp`* (Figure 3), with a potential range shift towards plots that previously received more annual precipitation (i.e., wetter plots).  `r numbers_to_words(n.occ.wetter + n.occ.drier, cap = T)` significant finding out of `r nrow(occ.results.t)` by chance alone is not unexpected. 
@@ -635,11 +619,14 @@ The across-species GLS mean and 95% confidence interval for the range shift temp
 The  density change analysis for precipitation found that the densities of `r n.num.drier.all` species shifted towards previously drier plots (Figure 4).  The 95% confidence intervals for `r numbers_to_words(n.num.drier, cap = F)` species with negative shifts (*`r num.drier.spp`*) did not contain zero. `r numbers_to_words(n.num.wetter, cap = T)` species, *`r num.wetter.spp`*, had densities shift towards previously wetter areas and a 95% confidence interval that did not contain zero.  This number of significant findings at α = 0.025 is unlikely due to chance alone (binomial *p* < 0.001).  Four of the eight species with density shifts associated with precipitation were gymnosperms.
 
 
-```{r fig.DensShift1, fig.cap = fig.densShift.cap}
 
-fig.densShift
+```{r fig.DensShift, fig.cap = fig.densShift.cap}
+
+density.fig
 
 ```
+
+
 
 
 The overall GLS estimates for the mean difference in temperature (and precipitation) between plots that had more and fewer trees was negative in both cases, with confidence intervals that did not include zero (for temperature, mean = `r num.gls.t[2, 1]` °C, 95% CI = `r num.gls.t[1, 1]` °C to `r num.gls.t[3, 1]` °C; for precipitation, mean = `r num.gls.p[2, 1]` °C, 95% CI = `r num.gls.p[1, 1]` °C to `r num.gls.p[3, 1]` °C).   Unlike Figure 3, these GLS confidence interval ranges are visible when plotted (Figure 4).
@@ -798,7 +785,7 @@ Westerling, A.L., Hidalgo, H.G., Cayan, D.R., Swetnam, T.W. 2006. Warming and ea
 Wolter, K.M.  1985. Introduction to Variance Estimation. New York: Springer-Verlag.  
 
 Woodall, C.W., Westfall, J.A., D'Amato, A.W., Foster, J.R., Walters, B.F. 2018. Decadal changes in tree range stability across forests of the eastern US. For. Ecol. Manage. 429, 503-510.  https://doi.org/10.1016/j.foreco.2018.07.049.
-  
+
 Woodall, C.W., Zhu, K., Westfall, J.A., Oswalt, C.M., D’amato, A.W., Walters, B.F., Lintz, H.E. 2013. Assessing the stability of tree ranges and influence of disturbance in eastern US forests. For. Ecol. Manage. 291, 172-180.  http://dx.doi.org/10.1016/j.foreco.2012.11.047
 
 Zhu, K., Woodall, C.W., Clark, J.S. 2012. Failure to migrate: lack of tree range expansion in response to climate change. Glob. Chang. Biol. 18, 1042-1052.  https://doi.org/10.1111/j.1365-2486.2011.02571.x

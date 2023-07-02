@@ -44,10 +44,10 @@ for (x in 1:4) {
 ############## 
 # -- some constants
 
-  resp.vars <- c("Temp", "annpre", "smrmaxvpd", "smrminvpd")
+  resp.vars <- c("Temp", "annpre", "maxvpd", "minvpd")
     
 # The SELECT.VAR constant will be used to create data with only the selected variable and save output with that variable name.
-SELECT.VAR <- resp.vars[x] # Variables = "Temp", "annpre", "decmint", "augmaxt", "smrmaxvpd", "smrminvpd"
+SELECT.VAR <- resp.vars[x] # Variables = "Temp", "annpre", "decmint", "augmaxt", "maxvpd", "minvpd"
 #   For         Mean Temp, Annual Precip, December Min Temp, August Max Temp, Summer Vapor Pressure Deficit
 RESP.TIMING <- y # 1 #2  # For which visit (1st or 2nd) do we want the predicted temperature or precipitation values?
 
@@ -61,7 +61,7 @@ LOC <- "Data/"  # Where the data are stored.
 
     # Obtaining the response value, whether it be temperature or precipitation values from the first or second visit,
    #     as determined by the regression on the previous 10 years.
-resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip.", "smrmaxvpd" = "vpdmax.", "smrminvpd" = "vpdmin."), "20.10.csv")) %>%  #"1st.2nd.csv")) %>%
+resp.values <- read_csv(paste0(LOC, switch(SELECT.VAR, "Temp" = "tmp.", "annpre" = "precip.", "maxvpd" = "vpdmax.", "minvpd" = "vpdmin."), "20.10.csv")) %>%  #"1st.2nd.csv")) %>%
   select(c(1:3, RESP.TIMING + 3)) 
 colnames(resp.values)[4] <- "response"
 v1 <- resp.values[, 4]

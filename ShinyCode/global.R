@@ -12,7 +12,7 @@ o.n. <- c("occ.", "num.")
 p.t.v. <- c("p", "t", "v_x", "v_n")
 e.bs <- c("e", "bs")
 o.n.folder <- c("Occ_Results/", "TreeNum_Results/")
-p.t.v.folder <- c("annpre", "Temp", "smrmaxvpd", "smrminvpd")
+p.t.v.folder <- c("annpre", "Temp", "maxvpd", "minvpd")
 e.bs.file <- c("sumtaylor_", "bs.results2_")  
 timing <- 1:2
 
