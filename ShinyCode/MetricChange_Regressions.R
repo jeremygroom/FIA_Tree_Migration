@@ -48,7 +48,8 @@ occ.dat2 <- occ.dat[which(occ.dat$occ.vals > 0), ] %>%
   left_join(delt.minv, by = "State_Plot") %>%
   dplyr::select(-occ.vals) %>%
   filter(pre.temp < 100) %>% 
-  left_join(LL, by = "State_Plot")
+  left_join(LL, by = "State_Plot") 
+
 
 spp.labs <- names(occ.dat2 %>% dplyr::select(starts_with("X")))
 
@@ -67,7 +68,9 @@ spp.slope.fcn <- function(sppX, prepost, deltaTPV) {
   x.min <- min(sp.X[, 1])   # min and max values for plotting
   x.max <- max(sp.X[, 1])
   test.X <- sp.X %>% filter(get(prepost) == x.min | get(prepost) == x.max) %>% # Setting up a data set for prediction at distribution endpoints (so we can draw a line)
-  arrange(mean_val)
+  arrange(mean_val) 
+  if(nrow(test.X) > 2) test.X <- test.X[c(1, nrow(test.X)), ]
+  
   #Transforming the data frame into a spatial object.
   sp.shp <- sp.X  
   coordinates(sp.shp) = ~ LON+LAT
@@ -82,8 +85,8 @@ spp.slope.fcn <- function(sppX, prepost, deltaTPV) {
   #     see: ?gabrielneigh, wikipedia: Gabriel graph
   lw <- nb2listw(nbG)                         # Spatial weights for neighbors list
   
-  m1e <- errorsarlm(get(deltaTPV) ~ 1, data = sp.shp, lw, tol.solve = 1.0e-30)  # First spatial error regression, model of the mean.
-  m2e <- errorsarlm(get(deltaTPV) ~ mean_val, data = sp.shp, lw, tol.solve = 1.0e-30)  # Second spatial error regression, has a slope for first/second visit metric
+  m1e <- spatialreg::errorsarlm(get(deltaTPV) ~ 1, data = sp.shp, lw, tol.solve = 1.0e-30, Durbin = FALSE)  # First spatial error regression, model of the mean.
+  m2e <- spatialreg::errorsarlm(get(deltaTPV) ~ mean_val, data = sp.shp, lw, tol.solve = 1.0e-30)  # Second spatial error regression, has a slope for first/second visit metric
   
   mod.list <- list(x.lm1, x.lm2, m1e, m2e)   # Collect models
   
@@ -131,13 +134,15 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
     # pre.temp.out <- as.matrix(sapply(spp.labs, spp.slope.fcn, prepost = "pre.temp", deltaTPV = "delta.T"))
     pre.temp.out <- parSapply(cl, spp.labs, FUN = spp.slope.fcn, prepost = prepost, deltaTPV = deltaTPV)  # This is the cluster call
     stopCluster(cl)
-    
-    # Gathering and saving the output.
+#    pre.temp.out.save <- pre.temp.out
+
+        # Gathering and saving the output.
     pre.temp.out <- as.matrix(pre.temp.out)
     pto1 <- unlist(pre.temp.out[5, ])
+    pto1.vals <- substr(names(pto1), nchar(names(pto1)), nchar(names(pto1))) # avoiding .3 names
     pto2 <- tibble(spp = unlist(pre.temp.out[1,]),
-                   pred1 = pto1[seq(1, length(pto1) - 1, 2)], 
-                   pred2 = pto1[seq(2, length(pto1), 2)],
+                   pred1 = pto1[which(pto1.vals == "1")], 
+                   pred2 = pto1[which(pto1.vals == "2")],
                    x.min = unlist(pre.temp.out[2, ]),
                    x.max = unlist(pre.temp.out[3, ]),
                    aic.vals = pre.temp.out[6, ],
@@ -149,7 +154,8 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
                    slp.coef = unlist(sapply(pre.temp.out[9, ], function(x) x[2])),
                    center.adj = unlist(pre.temp.out[10, ]),
                    int.alone.est = unlist(pre.temp.out[11, ]),
-                   int.alone.p = unlist(pre.temp.out[12, ]))
+                   int.alone.p = unlist(pre.temp.out[12, ])) %>%
+      filter(spp != "X768")
     
     write_csv(pto2, paste0(metric.chng.res.loc, "SpatialLM_", prepost, "_", deltaTPV, ".csv"))
     
@@ -157,7 +163,7 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
   }
 }
 
-Sys.time() - y   # 3.7 hrs
+Sys.time() - y   # 5+ hrs
 
 
 

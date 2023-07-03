@@ -46,12 +46,10 @@ comp.plt.all.fcn <- function(densrange, num.plt) {
   r1.order <- r1 %>% select(Spp.symbol) %>%
     mutate(order = seq(1:nrow(r1))) %>% data.frame()
   
-  r2 <- fia.dataprep.fcn(occnum, "p", "1", "e")  %>% data.frame()
-  r3 <- fia.dataprep.fcn(occnum, "v_x", "1", "e")  %>% data.frame()
-  r4 <- fia.dataprep.fcn(occnum, "v_n", "1", "e")  %>% data.frame()
-  r_list <- list(r1.order, r2, r3, r4)
-  
-  r5 <- join_all(r_list, type = "left", match = "all") %>% arrange(order)
+  r2 <- fia.dataprep.fcn(occnum, "p", "1", "e") %>% left_join(r1.order, by = "Spp.symbol")  %>% arrange(order)
+  r3 <- fia.dataprep.fcn(occnum, "v_x", "1", "e") %>%  left_join(r1.order, by = "Spp.symbol")  %>% arrange(order)
+  r4 <- fia.dataprep.fcn(occnum, "v_n", "1", "e") %>% left_join(r1.order, by = "Spp.symbol")  %>% arrange(order)
+ 
     
   gls.vals1 <- gls1[[which(names(gls1) == paste0("gls.", occnum, "t", "1"))]]
   gls.vals2 <- gls1[[which(names(gls1) == paste0("gls.", occnum, "p", "1"))]]
@@ -92,6 +90,30 @@ comp.plt.all.fcn <- function(densrange, num.plt) {
   print(p_all)      
   dev.off()
 }
+
+## For table 2, previously table 3. Summarizes/extracts values from the metric change results.
+chng.clim.fcn <- function(chng.dat) {
+  chng.dat$slope.pos <- ifelse(is.na(chng.dat$slp.p) == FALSE & (chng.dat$pred2 > chng.dat$pred1) == TRUE, 1,
+                               ifelse(is.na(chng.dat$slp.p) == FALSE & (chng.dat$pred2 < chng.dat$pred1) == TRUE, -1, 0))
+  chng.dat$intercept.pos <- ifelse((chng.dat$int.alone.est > 0) == TRUE , "pos", "neg")
+                                   #ifelse(is.na(chng.dat$int.alone.p) == FALSE & (chng.dat$int.alone.est < 0) == TRUE, -1, 0))
+  t3.delta <- chng.dat %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data.frame() %>%
+    group_by(intercept.pos) %>%
+    reframe(sig.int = length(int.alone.p[int.alone.p < 0.025]),
+              sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
+              sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0])) %>%
+    arrange(desc(intercept.pos) )
+  
+  if(length(t3.delta$intercept.pos) == 1) { 
+    val.p.n. <- switch(t3.delta$intercept.pos, "neg" = "pos", "pos" = "neg")
+    t3.delt2 <- tibble(intercept.pos = val.p.n., sig.int = 0, sig.slp.pos = 0, sig.slp.neg = 0) 
+    t3.delta <- bind_rows(t3.delta, t3.delt2) %>% arrange(desc(intercept.pos) )
+  }
+  list(slope.pos = chng.dat$slope.pos, intercept.pos = chng.dat$intercept.pos, t3.delta = t3.delta )
+  
+}
+
+
 
 ## Data summary function, both for Markdown and plotting all species spatial regression lines.
 pto.fcn <- function(ch.data) {

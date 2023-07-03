@@ -1,0 +1,9 @@
+Metric,Intercept,Slope +,Slope -
++$\Delta$Temperature,37,0,25
+-$\Delta$Temperature,3,0,4
++$\Delta$Precipitation,8,1,6
+-$\Delta$Precipitation,27,1,26
++$\Delta$VPD Maximum,44,21,5
+-$\Delta$VPD Maximum,1,0,2
++$\Delta$VPD Minimum,48,41,0
+-$\Delta$VPD Minimum,0,0,0

@@ -278,35 +278,23 @@ if (file.exists(paste0(ms.file.loc, "ms.dat.prep.RData"))) {
     # If Table 3 isn't found, first, read in the output from the MetricChange_Regressions.R function.  
     chng.temp <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds"))
     chng.precip <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))
+    chng.maxvpd <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_maxvpd, "_", deltaTP2_maxvpd, ".rds"))
+    chng.minvpd <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_minvpd, "_", deltaTP2_minvpd, ".rds"))
     
     # Next, summarizing those findings for table 3.
-    chng.temp$slope.pos <- ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 > chng.temp$pred1) == TRUE, 1,
-                                  ifelse(is.na(chng.temp$slp.p) == FALSE & (chng.temp$pred2 < chng.temp$pred1) == TRUE, -1, 0))
     
-    chng.temp$intercept.pos <- ifelse((chng.temp$int.alone.est > 0) == TRUE , 1, 0)
     
-    chng.precip$slope.pos <- ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 > chng.precip$pred1) == TRUE, 1,
-                                    ifelse(is.na(chng.precip$slp.p) == FALSE & (chng.precip$pred2 < chng.precip$pred1) == TRUE, -1, 0))
+    t3.temp <- chng.clim.fcn(chng.temp)
+    t3.precip <- chng.clim.fcn(chng.precip)
+    t3.maxvpd <- chng.clim.fcn(chng.maxvpd)
+    t3.minvpd <- chng.clim.fcn(chng.minvpd)
     
-    chng.precip$intercept.pos <- ifelse((chng.precip$int.alone.est > 0) == TRUE , 1, 0)
-    
-    t3.delta.T <- chng.temp %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
-      group_by(factor(intercept.pos, levels = c(1, 0))) %>%
-      summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
-                sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
-                sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
-    
-    t3.delta.P <- chng.precip %>% dplyr::select(spp, int.alone.p, intercept.pos, slope.true, slp.p, slp.coef) %>% data_frame() %>%
-      group_by(factor(intercept.pos, levels = c(1, 0))) %>%
-      summarize(sig.int = length(int.alone.p[int.alone.p < 0.025]),
-                sig.slp.pos = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef > 0]), 
-                sig.slp.neg = length(slope.true[slope.true == 1 & slp.p < 0.025 & slp.coef < 0]))
     
     
     # Creating the table
-    t3 <- bind_rows(t3.delta.T, t3.delta.P)
+    t3 <- bind_rows(t3.temp$t3.delta, t3.precip$t3.delta, t3.maxvpd$t3.delta, t3.minvpd$t3.delta)
     names(t3) <- c("Metric", "Intercept", "Slope +", "Slope -")
-    t3[, 1] <- c(paste0(c("+", "-", "+", "-"), "$\\Delta$", c("T", "T", "P", "P")))
+    t3[, 1] <- c(paste0(rep(c("+", "-"), 4), "$\\Delta$", rep(c("Temperature", "Precipitation", "Maximum VPD", "Minimum VPD"), each = 2)))
     
     write_csv(t3, paste0(metric.chng.res.loc, "Table3.csv") ) 
     
