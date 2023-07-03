@@ -33,6 +33,7 @@ library(cowplot)
 library(grid)
 library(gridExtra)
 library(ggplotify) # enables as.grob() function
+library(furrr)   
 
 loadfonts(device = 'win')
 
@@ -169,7 +170,7 @@ actmean <- function(datorig,datrevis,resp.orig,resp.revis) {     #resp.orig, res
   means
 }
 
-nn<-length(orig[,1])   # nn = N = total plots including ones not sampled
+nn <- length(orig[,1])   # nn = N = total plots including ones not sampled
 
 wt.varcov.fcn <- function(xy.sum, xsum, ysum, nnh) {(1/nn) * sum(strat2$W_h * nnh * (xy.sum - (1/nnh) * xsum * ysum))}
 
@@ -258,10 +259,61 @@ write_csv(sumtaylor,paste0(RES, 'sumtaylor_', SELECT.VAR, '_', RESP.TIMING, '.cs
 
 #################################################################################
 
+for.plt.orig <- which(orig$propfor > 0)  # Same for revisit plots
+
+# Prepare for parallel computing 
+workers.use <- availableCores() - 2
+plan(multisession, workers = workers.use)
+
+
+bs.iterations <- 1:10000
+
+bs.pa.null.fcn <- function(iter){
+  x <- iter
+  resp.for.plt.orig <- orig[for.plt.orig, 13]                 # Gathering forested plot response values for first visit
+  samp.for.orig <- sample(resp.for.plt.orig, replace = TRUE)   # Sampling response values with replacement
+  
+  resp.for.plt.revis <- revis[for.plt.orig, 13]               # Now doing the same for the second visit
+  samp.for.revis <- sample(resp.for.plt.revis, replace = TRUE)
+  
+  orig.rep <- orig
+  revis.rep <- revis
+  orig.rep[for.plt.orig, 13] <- samp.for.orig                 # Replacing forested values with sampled values
+  revis.rep[for.plt.orig, 13] <- samp.for.revis
+  
+  
+  temactmean <- actmean(orig.rep, revis.rep, get(SELECT.VAR, orig.rep), get(SELECT.VAR, revis.rep))   
+  # Standard errors
+  temSE <- sqrt(vardiffsum(orig.rep, revis.rep, which(names(orig) == SELECT.VAR), temactmean))
+  
+  sumtaylor_ci <- tibble(sppname = ordered.spp$Common_Name, spp.codes = ordered.spp$spp.codes, Spp.symbol = ordered.spp$SPECIES_SYMBOL, 
+                         SciName = ordered.spp$SciName, n.orig = ordered.spp$n.orig, n.revis = ordered.spp$n.revis, temactmean = temactmean$diff, temSE) %>%
+    mutate(LCI = temactmean - 1.96 * temSE,
+           UCI = temactmean + 1.96 * temSE,
+           sig = ifelse((LCI < 0 & UCI < 0) | (LCI > 0 & UCI > 0), 1, 0))
+  
+  return(sum(sumtaylor_ci$sig))
+}
+iter <- 1
+bs.pa.null.fcn(iter)
+
+yt <- Sys.time()
+pa.bootstrap <- future_map(bs.iterations, bs.pa.null.fcn, .options = furrr_options(seed = TRUE))
+Sys.time() - yt   # 2.6 hrs
+
+pa.bs.out <- data.frame(pa.bs.out = unlist(pa.bootstrap))
+write_csv(pa.bs.out, paste0(RES, "false.neg.rate.bs_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
+
+
+
+
+
+
+
+####
 no_cores <- detectCores(logical = TRUE)  # returns the number of available hardware threads, and if it is FALSE, returns the number of physical cores
 cl <- makeCluster(no_cores - 1 )  
 registerDoParallel(cl) 
-
 
 
 strat3 <- as.matrix(strat2)
