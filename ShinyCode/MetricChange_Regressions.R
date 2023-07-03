@@ -20,7 +20,7 @@ delt.t <- read_csv(paste0(data.file.loc, "tmp.20.10.csv")) %>% #"tmp.1st.2nd.csv
          State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   dplyr::select(State_Plot, pre.temp, post.temp, delta.T)
 
-delt.p <- read_csv(paste0(data.file.loc, "precip.20.10.csv"))%>% #"precip.1st.2nd.csv")) %>% 
+delt.p <- read_csv(paste0(data.file.loc, "precip.20.10.csv")) %>% #"precip.1st.2nd.csv")) %>% 
   mutate(delta.P = post.precip - pre.precip,
          State_Plot = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   dplyr::select(State_Plot, pre.precip, post.precip, delta.P)
@@ -69,7 +69,7 @@ spp.slope.fcn <- function(sppX, prepost, deltaTPV) {
   x.max <- max(sp.X[, 1])
   test.X <- sp.X %>% filter(get(prepost) == x.min | get(prepost) == x.max) %>% # Setting up a data set for prediction at distribution endpoints (so we can draw a line)
   arrange(mean_val) 
-  if(nrow(test.X) > 2) test.X <- test.X[c(1, nrow(test.X)), ]
+  if (nrow(test.X) > 2) test.X <- test.X[c(1, nrow(test.X)), ]
   
   #Transforming the data frame into a spatial object.
   sp.shp <- sp.X  
@@ -142,7 +142,7 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
     pto1.vals <- substr(names(pto1), nchar(names(pto1)), nchar(names(pto1))) # avoiding .3 names
     pto2 <- tibble(spp = unlist(pre.temp.out[1,]),
                    pred1 = pto1[which(pto1.vals == "1")], 
-                   pred2 = pto1[which(pto1.vals == "2")],
+                   pred2 = pto1[which(pto1.vals != "1")],
                    x.min = unlist(pre.temp.out[2, ]),
                    x.max = unlist(pre.temp.out[3, ]),
                    aic.vals = pre.temp.out[6, ],
@@ -154,8 +154,7 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
                    slp.coef = unlist(sapply(pre.temp.out[9, ], function(x) x[2])),
                    center.adj = unlist(pre.temp.out[10, ]),
                    int.alone.est = unlist(pre.temp.out[11, ]),
-                   int.alone.p = unlist(pre.temp.out[12, ])) %>%
-      filter(spp != "X768")
+                   int.alone.p = unlist(pre.temp.out[12, ])) 
     
     write_csv(pto2, paste0(metric.chng.res.loc, "SpatialLM_", prepost, "_", deltaTPV, ".csv"))
     
@@ -163,7 +162,7 @@ prepost <-  timing.metric[(i - 1) * 2 + j]
   }
 }
 
-Sys.time() - y   # 5+ hrs
+Sys.time() - y   # 8 hrs
 
 
 

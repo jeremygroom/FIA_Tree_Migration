@@ -99,13 +99,13 @@ spp.absent.gt <- spp.names2 %>% mutate(gt.spp = ifelse(spp.codes %in% spp.gt, 1,
   filter(gt.spp == 0)
 
   ## 
-  ch.TempV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.temp_delta.T.rds")) 
-  ch.TempV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.temp_delta.T.rds")) 
-  ch.PrecipV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.precip_delta.P.rds")) 
-  ch.PrecipV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.precip_delta.P.rds")) 
-  ch.VPDmaxV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.vpdmax_delta.Vmax.rds")) 
-  ch.VPDmaxV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.vpdmax_delta.Vmax.rds")) 
-  ch.VPDminV1 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_pre.vpdmin_delta.Vmin.rds")) 
-  ch.VPDminV2 <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_post.vpdmin_delta.Vmin.rds")) 
+  ch.TempV1 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_pre.temp_delta.T.csv"), show_col_types = FALSE) 
+  ch.TempV2 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_post.temp_delta.T.csv"), show_col_types = FALSE) 
+  ch.PrecipV1 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_pre.precip_delta.P.csv"), show_col_types = FALSE) 
+  ch.PrecipV2 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_post.precip_delta.P.csv"), show_col_types = FALSE) 
+  ch.VPDmaxV1 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_pre.vpdmax_delta.Vmax.csv"), show_col_types = FALSE) 
+  ch.VPDmaxV2 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_post.vpdmax_delta.Vmax.csv"), show_col_types = FALSE) 
+  ch.VPDminV1 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_pre.vpdmin_delta.Vmin.csv"), show_col_types = FALSE) 
+  ch.VPDminV2 <- read_csv(paste0(metric.chng.res.loc, "SpatialLM_post.vpdmin_delta.Vmin.csv"), show_col_types = FALSE) 
   
 
