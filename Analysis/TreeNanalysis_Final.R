@@ -103,7 +103,7 @@ Analysis1 <- Tree5.3 %>%
   filter(SDN != 0) %>%                 #removing SDN = 0 values here
   filter(STATUSCD == 1) %>%         # Need all trees to be alive (not dead or removed, 2 & 3)
   group_by(STATECD, PLOT_FIADB,State_Plot, SPCD) %>%
-  summarize(n.fv = length(INVYR[INVYR < 2011]),
+  reframe(n.fv = length(INVYR[INVYR < 2011]),
             n.sv = length(INVYR[INVYR >= 2011]),
             num.code = if (n.fv > n.sv) 1 else if (  # 1 = fewer trees second visit
               n.fv == n.sv) 2 else if (             # 2 = same number of trees both visits
@@ -119,7 +119,7 @@ Analysis1.2 <- rbind(Analysis1, missed.dead.trees)
 
 summary_A1 <- Analysis1.2 %>% filter(SPCD %in% ordered.spp$SppCode) %>% select(SPCD, num.code) %>% 
   group_by(SPCD) %>%
-  summarize(n_1 = length(num.code[num.code == 1]),
+  reframe(n_1 = length(num.code[num.code == 1]),
             n_2 = length(num.code[num.code == 2]),
             n_3 = length(num.code[num.code == 3]),
             pct_more = n_3/sum(n_1, n_2, n_3),
@@ -377,6 +377,64 @@ write_csv(sumtaylor,paste0(RES, "sumtaylor_", SELECT.VAR, "_", RESP.TIMING, ".cs
 ###            (3) Conduct a bootstrap analysis to arrive at the variance estimates via a different approach
 ###            Bootstrapping is done for the mean, 5%, and 95% quantiles.  GLS analyses are done for each.
 #################################################################################
+
+
+## Permutation false-error rate
+for.plt.gt <- which(gt$propfor > 0)  # Same for revisit plots
+
+# Prepare for parallel computing 
+workers.use <- availableCores() - 2
+plan(multisession, workers = workers.use)
+
+
+bs.iterations <- 1:10000
+
+bs.pa.null.fcn <- function(iter){
+  x <- iter
+  resp.for.plt.gt <- gt[for.plt.gt, 13]                 # Gathering forested plot response values for first visit
+  samp.for.gt <- sample(resp.for.plt.gt, replace = FALSE)   # Sampling response values with replacement
+  
+  resp.for.plt.lt <- lt[for.plt.gt, 13]               # Now doing the same for the second visit
+  samp.for.lt <- sample(resp.for.plt.lt, replace = FALSE)
+  
+  gt.rep <- gt
+  lt.rep <- lt
+  gt.rep[for.plt.gt, 13] <- samp.for.gt                 # Replacing forested values with sampled values
+  lt.rep[for.plt.gt, 13] <- samp.for.lt
+  
+  temactmean <- actmean(lt.rep, gt.rep, lt.rep$response, gt.rep$response)   
+  # Standard errors
+  temSE <- sqrt(vardiffsum(lt.rep, gt.rep, which(names(lt.rep) == response), temactmean))
+  
+  
+  tem_out <- tibble(spp.codes = names(gt.rep)[14:ncol(gt)], temactmean = temactmean$diff, temSE = temSE) %>% 
+    mutate(spp.codes = as.numeric(substr(spp.codes, 2, nchar(spp.codes))))
+  
+  sumtaylor <- tibble(SppNames = ordered.spp$Common_Name, spp.codes = ordered.spp$spp.codes, Spp.symbol = ordered.spp$SPECIES_SYMBOL, 
+                      SciName = ordered.spp$SciName, n.lt = ordered.spp$n.lt, n.gt = ordered.spp$n.gt) %>%
+    left_join(tem_out, by = "spp.codes") %>%
+    mutate(LCI = temactmean - 1.96 * temSE,
+           UCI = temactmean + 1.96 * temSE,
+           sig = ifelse((LCI < 0 & UCI < 0) | (LCI > 0 & UCI > 0), 1, 0))
+  
+  return(sum(sumtaylor_ci$sig))
+}
+iter <- 1
+bs.pa.null.fcn(iter)
+
+yt <- Sys.time()
+pa.perm <- future_map(bs.iterations, bs.pa.null.fcn, .options = furrr_options(seed = TRUE))
+Sys.time() - yt   # 1.7 hrs  # Started 12:45
+
+pa.perm.out <- data.frame(pa.perm.out = unlist(pa.perm))
+write_csv(pa.perm.out, paste0(RES, "false.neg.rate.perm_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
+
+###
+
+
+
+
+
 
 strat3 <- as.matrix(strat2)
 

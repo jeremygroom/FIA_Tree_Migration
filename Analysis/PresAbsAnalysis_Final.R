@@ -271,10 +271,10 @@ bs.iterations <- 1:10000
 bs.pa.null.fcn <- function(iter){
   x <- iter
   resp.for.plt.orig <- orig[for.plt.orig, 13]                 # Gathering forested plot response values for first visit
-  samp.for.orig <- sample(resp.for.plt.orig, replace = TRUE)   # Sampling response values with replacement
+  samp.for.orig <- sample(resp.for.plt.orig, replace = FALSE)   # Sampling response values with replacement
   
   resp.for.plt.revis <- revis[for.plt.orig, 13]               # Now doing the same for the second visit
-  samp.for.revis <- sample(resp.for.plt.revis, replace = TRUE)
+  samp.for.revis <- sample(resp.for.plt.revis, replace = FALSE)
   
   orig.rep <- orig
   revis.rep <- revis
@@ -298,11 +298,11 @@ iter <- 1
 bs.pa.null.fcn(iter)
 
 yt <- Sys.time()
-pa.bootstrap <- future_map(bs.iterations, bs.pa.null.fcn, .options = furrr_options(seed = TRUE))
+pa.perm <- future_map(bs.iterations, bs.pa.null.fcn, .options = furrr_options(seed = TRUE))
 Sys.time() - yt   # 2.6 hrs
 
-pa.bs.out <- data.frame(pa.bs.out = unlist(pa.bootstrap))
-write_csv(pa.bs.out, paste0(RES, "false.neg.rate.bs_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
+pa.perm.out <- data.frame(pa.perm.out = unlist(pa.perm))
+write_csv(pa.perm.out, paste0(RES, "false.neg.rate.perm_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))
 
 
 
