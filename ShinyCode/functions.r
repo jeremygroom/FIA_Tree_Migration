@@ -16,7 +16,7 @@ fia.dataprep.fcn <- function(o.n.x, p.t.x, t.x, e.bs.x){
 ## Plotting function for EstComp
 e.c.plot.fcn <- function(data1, meanvalue, gls.val, titletxt, spp, xlabtxt, ylabtxt, keepy, fontsize){
   ggplot(data1, aes(factor(spp, levels = spp), get(meanvalue))) +   # fct_reorder allows for reording the factor level (forecats in tidyverse)
-    geom_hline(yintercept = 0, linewidth = 0.1) + 
+    geom_hline(yintercept = 0, linewidth = 0.3) + 
     geom_linerange(aes(y = get(meanvalue), ymin = LCI, ymax = UCI)) +
     geom_point(shape = 21,  aes(fill = factor(sig))) +
     scale_fill_manual(values = c("white", "black")) + 
