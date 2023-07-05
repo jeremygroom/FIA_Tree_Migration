@@ -269,11 +269,12 @@ if (file.exists(paste0(ms.file.loc, "ms.dat.prep.RData"))) {
   
   ## Table 2 (previously Table 3) prep
   
-  if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds")),
-          file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))) == FALSE) {
-    source("ShinyCode/MetricChange_Regressions.R")  # If this runs (i.e., files are not found) it'll do so for ~ 4 hours.
+  #if (all(file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds")),
+  #        file.exists(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_precip, "_", deltaTP2_precip, ".rds"))) == FALSE) {
+  #  source("ShinyCode/MetricChange_Regressions.R")  # If this runs (i.e., files are not found) it'll do so for ~ 4 hours.
     
-  } else if (file.exists(paste0(metric.chng.res.loc, "Table3.csv")) == FALSE) {
+  #} else 
+  if (file.exists(paste0(metric.chng.res.loc, "Table3.csv")) == FALSE) {
     
     # If Table 3 isn't found, first, read in the output from the MetricChange_Regressions.R function.  
     chng.temp <- read_rds(paste0(metric.chng.res.loc, "SpatialLM_", prepost2_temp, "_", deltaTP2_temp, ".rds"))
@@ -545,7 +546,7 @@ Our analysis progression is depicted in Figure 2.  To summarize, we first obtain
 
 ```{r AnalysisSteps, fig.width = 4, fig.asp = 2, fig.cap = "Figure 2. Analysis steps.  A: Predict temperature and precipitation values (open circles) from visit 1 and 2 values for each year (closed circles) for each FIA plot (e.g., Plot X).  B: Conduct range shift analysis for each species of interest. Range shift = mean of temperature or precipitation values for the population of plots occupied in visit 2 minus those occupied in visit 1. C: Conduct density shift analysis for each species of interest.  Density shift = mean of temperature or precipitation values for plots that gained individuals minus those that lost individuals. D: Temperature and precipitation across species-occupied plots.  For each species we examined how plot temperature and precipitation values changed between the two visits and related to visit 1 values.  For subplots B, C, and D, examples portray results for a single species and plot x axes use temperature or precipitation values from the visit 1 year (see text for explanation).  Graphical examples are for temperature, not precipitation."}
 
-include_graphics(paste0(ms.file.loc, "Fig Analysis Steps3.1.png"))
+include_graphics(paste0(ms.file.loc, "Fig Analysis Steps3.jpg"))
 
 ```
 
