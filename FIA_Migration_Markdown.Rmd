@@ -151,6 +151,37 @@ if (file.exists(paste0(ms.file.loc, "ms.dat.prep.RData"))) {
   
   
   
+  ## Permutation test results ##
+   
+   # Range shift #
+  p.t.r <- read_csv(paste0(occ.temp.res.loc, "false.neg.rate.perm_temp_1.csv"), show_col_types = FALSE)
+  p.p.r <- read_csv(paste0(occ.precip.res.loc, "false.neg.rate.perm_annpre_1.csv"), show_col_types = FALSE)
+  p.x.r <- read_csv(paste0(occ.maxvpd.res.loc, "false.neg.rate.perm_maxvpd_1.csv"), show_col_types = FALSE)
+  p.n.r <- read_csv(paste0(occ.minvpd.res.loc, "false.neg.rate.perm_minvpd_1.csv"), show_col_types = FALSE)
+  
+  p.t.d <- read_csv(paste0(num.temp.res.loc, "false.neg.rate.perm_temp_1.csv"), show_col_types = FALSE)
+  p.p.d <- read_csv(paste0(num.precip.res.loc, "false.neg.rate.perm_annpre_1.csv"), show_col_types = FALSE)
+  p.x.d <- read_csv(paste0(num.maxvpd.res.loc, "false.neg.rate.perm_maxvpd_1.csv"), show_col_types = FALSE)
+  p.n.d <- read_csv(paste0(num.minvpd.res.loc, "false.neg.rate.perm_minvpd_1.csv"), show_col_types = FALSE)
+  
+range.perm <- tibble(r.temp = p.t.r$pa.bs.out, r.precip = p.p.r$pa.perm.out, r.max = p.x.r$pa.perm.out, r.min = p.n.r$pa.perm.out) 
+range.perm$any7 <- apply(range.perm, 1, function(x) if (any(x[1] > 6, x[2] > 6, x[3] > 6, x[3] > 6)) 1 else 0)
+range.perm$any3 <- apply(range.perm[, 1:4], 1, function(x) if (any(x[1] > 3, x[2] > 3, x[3] > 3, x[3] > 3)) 1 else 0)
+p.r.any.3 = sum(range.perm$any3) / 10000
+p.r.any.7 = sum(range.perm$any7) / 10000
+p.r.7 = apply(range.perm[, 1:4], 2, function(x) length(x[x > 6]) / 10000)
+p.r.3 = apply(range.perm[, 1:4], 2, function(x) length(x[x > 3]) / 10000)
+
+density.perm <- tibble(r.temp = p.t.d$pa.perm.out, r.precip = p.p.d$pa.perm.out, r.max = p.x.d$pa.perm.out, r.min = p.n.d$pa.perm.out) 
+density.perm$any7 <- apply(density.perm, 1, function(x) if (any(x[1] > 6, x[2] > 6, x[3] > 6, x[3] > 6)) 1 else 0)
+density.perm$any3 <- apply(density.perm[, 1:4], 1, function(x) if (any(x[1] > 3, x[2] > 3, x[3] > 3, x[3] > 3)) 1 else 0)
+p.d.any.3 = sum(density.perm$any3) / 10000
+p.d.any.7 = sum(density.perm$any7) / 10000
+p.d.7 = apply(density.perm[, 1:4], 2, function(x) length(x[x > 6]) / 10000)
+p.d.3 = apply(density.perm[, 1:4], 2, function(x) length(x[x > 3]) / 10000)
+  
+
+  
   ## == prepare_data_outputs == ##
   
   total.plot.num <- length(unique(paste0(total.plots$PLOT_FIADB, total.plots$STATECD)))  # This includes intensification plots, which were not used in the 2015 paper

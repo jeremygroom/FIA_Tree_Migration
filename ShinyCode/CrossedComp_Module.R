@@ -15,7 +15,7 @@ CrossedComp_UI <- function(id) {
                     div(htmlOutput("box10"),  style = 'color:black; border-radius: .5em; font-size:22px; background-color:#ccffe6; padding: 20px; margin: 20px;' ,
                         p("This plot displays the means and confidence intervals plotted in the previous page, except along the X and Y axes. 
                           This enables users to compare, say, species' density changes by plot temperature or precipitation values.  The plot
-                          can show all species (overwhelming), paired species (those that appear in the occupancy and density analyses), 
+                          can show all species (overwhelming), paired species (those that appear in the range and density shift analyses), 
                           significant species (at least one confidence interval for a species does not include zero), or paired and significant species.
                           Scroll down to select analysis variables of interest.", style = "font-size:20px")))),
     
@@ -145,8 +145,8 @@ CrossedComp_Server <- function(id) {
        
 #      browser()
         crossed.plt <- ggplot(r3, aes(response.x, response.y, text = paste0(SciName, "\n", SppNames))) +   # fct_reorder allows for reording the factor level (forecats in tidyverse)
-          geom_hline(yintercept = 0, size = 0.1) + 
-          geom_vline(xintercept = 0, size = 0.1) +
+          geom_hline(yintercept = 0, linewidth = 0.1) + 
+          geom_vline(xintercept = 0, linewidth = 0.1) +
           geom_linerange(aes(y = response.y, ymin = LCI.y, ymax = UCI.y, color = sig.y)) +
           geom_linerange(aes(x = response.x, xmin = LCI.x, xmax = UCI.x, color = sig.x)) +
           geom_point() +

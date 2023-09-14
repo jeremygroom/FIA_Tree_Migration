@@ -28,7 +28,7 @@ FIAapp <- function(){
   source("ShinyCode/Home_Module.R")
   source("ShinyCode/EstComp_Module.R")
   source("ShinyCode/CrossedComp_Module.R")
-  source("ShinyCode/TableComp1_Module.R")
+#  source("ShinyCode/TableComp1_Module.R")
   source("ShinyCode/Map1_Module.R")
   source("ShinyCode/Background_Module.R")
   source("ShinyCode/functions.r")
@@ -50,8 +50,8 @@ FIAapp <- function(){
         menuItem("Background", tabName = "bkgrnd"),
         menuItem(HTML("Comparison of species<br/>change estimates"), tabName = "EstComp"),
         menuItem(HTML("Crossed comparison of<br/>species change estimates"), tabName = "CrossedComp"),
-        menuItem(HTML("Map of temperature, precipitation,<br/>and their changes over time"), tabName = "map1"),
-        menuItem(HTML("Tabular comparison of<br/>difference for variance<br/>and timing approaches"), tabName = "Tab1Comp"),
+        menuItem(HTML("Map of climate variables<br/>and their changes over time"), tabName = "map1"),
+        #menuItem(HTML("Tabular comparison of<br/>difference for variance<br/>and timing approaches"), tabName = "Tab1Comp"),
         menuItem("Files and Code", icon = icon("github"), href = 'https://github.com/jeremygroom/FIA_Tree_Migration')
         
 
@@ -87,11 +87,12 @@ FIAapp <- function(){
           tabItem(tabName = "map1",
                   fluidRow(
                     Map1_UI("MapFig1")
-                  )),
-          tabItem(tabName = "Tab1Comp",
-                  fluidRow(
-                    TabVarTiming_UI("TabVarTiming")
-                  )))
+                  ))#,
+        #  tabItem(tabName = "Tab1Comp",
+        #          fluidRow(
+        #            TabVarTiming_UI("TabVarTiming")
+    #              ))
+    )
       )
   )
   
@@ -101,7 +102,7 @@ FIAapp <- function(){
     output$EstComp1 <- EstComp_Server("EstComp1") 
     output$CrossedComp1 <- CrossedComp_Server("CrossedComp1")
     output$MapFig1 <- Map1_Server("MapFig1")
-    output$TabVarTiming <- TabVarTiming_Server("TabVarTiming")
+   # output$TabVarTiming <- TabVarTiming_Server("TabVarTiming")
 
     
   }

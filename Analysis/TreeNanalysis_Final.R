@@ -401,10 +401,11 @@ bs.pa.null.fcn <- function(iter){
   lt.rep <- lt
   gt.rep[for.plt.gt, 13] <- samp.for.gt                 # Replacing forested values with sampled values
   lt.rep[for.plt.gt, 13] <- samp.for.lt
-  
+
+
   temactmean <- actmean(lt.rep, gt.rep, lt.rep$response, gt.rep$response)   
   # Standard errors
-  temSE <- sqrt(vardiffsum(lt.rep, gt.rep, which(names(lt.rep) == response), temactmean))
+  temSE <- sqrt(vardiffsum(lt.rep, gt.rep, which(names(lt.rep) == "response"), temactmean))
   
   
   tem_out <- tibble(spp.codes = names(gt.rep)[14:ncol(gt)], temactmean = temactmean$diff, temSE = temSE) %>% 
@@ -417,14 +418,14 @@ bs.pa.null.fcn <- function(iter){
            UCI = temactmean + 1.96 * temSE,
            sig = ifelse((LCI < 0 & UCI < 0) | (LCI > 0 & UCI > 0), 1, 0))
   
-  return(sum(sumtaylor_ci$sig))
+  return(sum(sumtaylor$sig))
 }
 iter <- 1
 bs.pa.null.fcn(iter)
 
 yt <- Sys.time()
 pa.perm <- future_map(bs.iterations, bs.pa.null.fcn, .options = furrr_options(seed = TRUE))
-Sys.time() - yt   # 1.7 hrs  # Started 12:45
+Sys.time() - yt   # 1.7 hrs  # Started 3:05  Expected 4:50.  
 
 pa.perm.out <- data.frame(pa.perm.out = unlist(pa.perm))
 write_csv(pa.perm.out, paste0(RES, "false.neg.rate.perm_", SELECT.VAR,  "_", RESP.TIMING, ".csv"))

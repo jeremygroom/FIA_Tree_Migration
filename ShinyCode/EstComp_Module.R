@@ -58,7 +58,7 @@ EstComp_UI <- function(id) {
                    which show the difference in the range-wide temperature or precipitation values for a species between the first and 
                    second visit. Density shift analyses show the difference in temperature or precipitation values between plots that had more trees at the second 
                    visit and those that had fewer.  See the \"Background\" tab for more information."),
-                        p("The temperature or precipitation values used are estiamted from either the first 10 years up to the first visit (First visit)
+                        p("The values for selected climate variables used are estiamted from either the first 20 years up to the first visit (First visit)
                    or from the second ten years up to the second visit (Second visit; see \"Background\" tab for more detail).  Users may also
                    select which variance estimation procedure was used - either variance approximated through a Taylor series expansion approximation (TSE Estimate)
                    or estiamted via a bootstrap procedure (Bootstrap).")))),
@@ -74,7 +74,7 @@ EstComp_UI <- function(id) {
                 that the species' range has shifted towards plots that ", em("were cooler during the first visit.")),
                         p("If the user selected ", strong("Second visit"), " as a time perspective, then only the plot temperatures from the second visit are considered.  \"Cooler\" then means
                 that the species is occupying plots that ", em("at the second visit were cooler.")),
-                        p("Users are able to select between the first-visit or second-visit temperatures (or precipitation values) because, without digging deeper, we do not know
+                        p("Users are able to select between the first-visit or second-visit climate variables because, without digging deeper, we do not know
                           what happened to plot temperatures over time.  If all plots warmed, and did so evenly, then it should not matter whether we use temperature values 
                           from the first visit or the second visit in this analysis.  This begs some questions: did all plot temperatures warm?  Did they warm evenly?  The user
                            is able to see if it matters which visit's values are used in the analysis.  The user can also see, across a species' range, what happened.  Check out
@@ -84,6 +84,12 @@ EstComp_UI <- function(id) {
                  zero line indicates that the average precipitation value for the second visit is less than the average precipitation value for the first visit.  I.e., the 
                           species' range has shifted towards relatively drier plots.  If the selected time perspective is ", strong("First visit"), " the species' range is shifting towards 
                           plots that were initially drier; a similar shift for ", strong("Second visit"), " plots means the shift is towards plots that were drier as of the second visit."),
+                        h3("Range Shift, Vapor Pressure Deficit"),
+                        p("If the user selects ", strong("Range Shift"), " as an analysis type and ", strong("Maximum Vapor Pressure Deficit"), " or ", strong("Minimum Vapor Pressure Deficit"), 
+                        " as an analysis metric, a circle to the left of the vertical zero line indicates that the average vapor pressure deficit (VPD) value for the second visit is less than 
+                        the average precipitation value for the first visit.  I.e., the species' range has shifted towards those plots with relatively lower maximum or minimum VPD values.  
+                        If the selected time perspective is ", strong("First visit"), " the species' range is shifting towards plots with lower initial VPD values; a similar shift 
+                        for ", strong("Second visit"), " plots means the shift is towards plots with lower maximum or minimum VPD as of the second visit."),
                         h3("Density Shift, Temperature"),
                         p("If the user selects ", strong("Density Shift"), " as an analysis type and ", strong("Temperature"), " as an analysis metric, a circle to the left of the vertical 
                  zero line indicates that, as of the second visit, more trees were found in cooler plots and/or fewer trees were found in warmer plots. The same time perspective interpretations 
@@ -91,7 +97,12 @@ EstComp_UI <- function(id) {
                         h3("Density Shift, Precipitation"),
                         p("If the user selects ", strong("Density Shift"), " as an analysis type and ", strong("Precipitation"), " as an analysis metric, a circle to the left of the vertical 
                  zero line indicates that, on average and as of the second visit, more trees were found in drier plots and/or fewer trees were found in wetter plots. The same time perspective interpretations 
-                 described above apply.")
+                 described above apply."),
+                        h3("Density Shift, Vapor Pressure Deficit"),
+                        p("If the user selects ", strong("Density Shift"), " as an analysis type and ", strong("Maximum Vapor Pressure Deficit"), " or ", strong("Minimum Vapor Pressure Deficit"), " as an 
+                        analysis metric, a circle to the left of the vertical zero line indicates that, on average and as of the second visit, more trees were found in plots with lower maximum or minimum VPD 
+                        and/or fewer trees were found in plots with higher VPD values. The same time perspective interpretations described above apply.")
+                        
                     )
     ))
     

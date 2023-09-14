@@ -8,16 +8,16 @@ Map1_UI <- function(id) {
     fluidRow(column(width = 10, offset = 1, align = "center", h1("Map and plots of temperature, precipitation, and species' ranges"))),
     fluidRow(column(width = 8, offset = 2, align = "center",
                     box(width = 12,
-                        p("These figures all display PRISM temperature and precipitation information associated with FIA plots.  Note that under \" Select Metric\" users can choose a change option
-                          for precipitation and temperature.  This is the difference in plots' metrics, the second visit - the first visit.  
+                        p("These figures all display PRISM climate variable information associated with FIA plots.  Note that under \" Select Metric\" users can choose a change option
+                          for precipitation, temperature, maximum vapor pressure deficit (VPD), or minimum VPD.  This change option is the difference in plots' metrics, the second visit minus first visit value.  
                           Under \"Select species data to display\" the default option is \"All\".  This provides information on every FIA plot in Oregon,
                           Washington, and California (note that most FIA plots are not visited because they do not contain forest).", style = "font-size:20px"),
                         p("In the box to the right of the map are three other figures.  All three respond to the metric and species selected, plus the \"Range 
                         or density shift results\" selection.  Once you select a species, note that by clicking on the legend you can turn the display of different categories
                           on or off.  The first (top) plot displays a first or second visit metric on the X axis and the corresponding change metric on the Y axis. 
                           It also includes an option to show the best spatially-balanced linear fit of the data for each legend option.
-                          The purpose of this figure is to evaluate the stability of a metric's change across the X axis values.
-                          The middle plot shows the distribution of precipitation and temperature data.
+                          The purpose of this figure is to evaluate the stability of a climate variable's change across the X axis values.
+                          The middle plot shows the distribution of precipitation and temperature data. You may change the X axis displayed.
                           The purpose of the histogram at the bottom is to display the (non-weighted) mean and density of data from plot categories.", style = "font-size:20px")))),
     
     

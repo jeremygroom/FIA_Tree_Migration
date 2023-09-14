@@ -8,7 +8,7 @@ Home_UI <- function(id) {
     useShinyjs(),
     fluidRow(box(width = 12,
                  #status = "success",   # makes the top of the box green.  
-                 column(10, offset = 1, align = "center", h1(id = "hp-title", HTML("West coast U.S. tree species evidence shifts in density but not range:<br/>A data dashboard")),
+                 column(10, offset = 1, align = "center", h1(id = "hp-title", HTML("West coast U.S. tree species show stronger evidence for shifts in density than range:<br/>A data dashboard")),
                         tags$style(HTML("#hp-title{color: #154360;
                              font-size: 40px;
                                  font-style: italic;}"))))),
@@ -16,12 +16,12 @@ Home_UI <- function(id) {
                     imageOutput(ns("movers"))),
              column(width = 5, offset = 1,
                     box(width = 12, h3("Summary"),
-                        p("This dashboard is associated with the manuscript \"West coast U.S. tree species evidence shifts in density but not range\", by Jeremiah D. Groom (", 
+                        p("This dashboard is associated with the manuscript \"West coast U.S. tree species show stronger evidence for shifts in density than range\", by Jeremiah D. Groom (", 
                           a("Groom Analytics, LLC", href = "https://www.groomanalytics.com/"), ") and Vicente J. Monleon (USDA Forest Service).", style = "font-size:20px"),
                           p("We analyzed ", a("Forest Inventory and Analysis", href = "https://www.fia.fs.usda.gov/"), "(FIA) plot revisit data in the states of California, 
                           Oregon, and Washington to examine shifts in the ranges and densities of tree species 
-                          relative to plot temperature and precipitation values.  Plots were first visited between 2001 and 2010, and again ten years later, between 2011 and 
-                          2019.  Temperature and precipitation data were obtained from", a("PRISM", href = "https://prism.oregonstate.edu/" ), ".", style = "font-size:20px"),
+                          relative to plot climate variable values.  Plots were first visited between 2001 and 2010, and again ten years later, between 2011 and 
+                          2019.  Data for climate variables were obtained from", a("PRISM", href = "https://prism.oregonstate.edu/" ), ".", style = "font-size:20px"),
                         p("We created this dashboard so that visitors could explore our data in greater depth than our manuscript allows.  See how changing estimation 
                           procedures affects outcomes.  Compare, say, temperature and precipitation outcomes simultaneously.  Check out the ranges of individual species 
                           and see how they’ve changed over ten years.", style = "font-size:20px"),
