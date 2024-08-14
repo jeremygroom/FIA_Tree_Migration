@@ -41,7 +41,6 @@ loadfonts(device = 'win')
 
 for (x in 1:4) {
   for (y in 1:2) {
-    
 ############## 
 # -- some constants
 
@@ -76,7 +75,7 @@ strat <- read_csv(paste0(LOC, "strat_info052120.csv")) %>%
 strat2 <- strat %>% select(STRATUM, P1POINTCNT, W_h)  # Reducing the number of columns to those we need 
 
 
-orig <- read_csv(paste0(LOC, "Occ_OriginalVisit.csv") ) %>% left_join(resp.values[, c(1:2, 4)], by = c("STATECD", "PLOT_FIADB"))
+orig <- read_csv(paste0(LOC, "Occ_OriginalVisit2.csv") ) %>% left_join(resp.values[, c(1:2, 4)], by = c("STATECD", "PLOT_FIADB"))
 orig[, 13] <- orig[, ncol(orig)]   # Attached the column "response" to the end of the data table, now making the Temp column have the same values
 colnames(orig)[13] <- SELECT.VAR
 orig <- orig[, -ncol(orig)]

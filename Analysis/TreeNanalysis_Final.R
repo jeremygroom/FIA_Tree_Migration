@@ -69,7 +69,7 @@ resp.values[, 4] <- v1$response
 
 
 # Loading tree data to obtain numbers of trees
-Tree5.2 <- readr::read_csv(unzip(paste0(LOC, "Cleaned_Trees_2019.zip"), "Cleaned_Trees_2019.csv"))
+Tree5.2 <- readr::read_csv(unzip(paste0(LOC, "Cleaned_Trees_2019v2.zip"), "Cleaned_Trees_2019v2.csv"))
 
 ## Need to remove trees in the macroplot, otherwise ingrowth of really big trees can occur
 Tree5.2 <- Tree5.2 %>% filter(DIST <= 24)
@@ -369,7 +369,6 @@ sumtaylor <- tibble(SppNames = ordered.spp$Common_Name, spp.codes = ordered.spp$
 
 
 write_csv(sumtaylor,paste0(RES, "sumtaylor_", SELECT.VAR, "_", RESP.TIMING, ".csv"))
-
 
 
 
